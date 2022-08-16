@@ -1,0 +1,32 @@
+# https://packaging.python.org/tutorials/packaging-projects/
+
+[build-system]
+requires = [
+    "setuptools>=61.0",
+    "wheel"
+]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "aioaquarea"
+version = "0.0.1"
+authors = [
+  { name="Carlos J. Aliaga", email="author@example.com" },
+]
+description = "Asynchronous library to control Panasonic Aquarea devices"
+readme = "README.md"
+license = { file="LICENSE" }
+requires-python = ">=3.9"
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+]
+dependencies = [
+  "aiohttp",
+  'StrEnum; python_version < "3.11"'
+]
+
+[project.urls]
+"Homepage" = "https://github.com/cjaliaga/aioaquarea"
+"Bug Tracker" = "https://github.com/cjaliaga/aioaquarea/issues"
