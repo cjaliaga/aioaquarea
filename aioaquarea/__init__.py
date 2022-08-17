@@ -2,15 +2,16 @@
 
 from typing import Tuple
 
-from .core import (
-    Client as Client,
-    Device as Device)
-
-from .errors import (ClientError)
+from .core import (Client,Device)
+from .errors import (ClientError, RequestFailedError)
+from .data import (DeviceInfo, DeviceStatus)
 
 
 __all__: Tuple[str, ...] = (
     "Client",
     "Device",
-    "ClientError"
+    "ClientError",
+    "RequestFailedError",
+    "DeviceInfo",
+    "DeviceStatus"
 )

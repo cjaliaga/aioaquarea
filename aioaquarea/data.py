@@ -2,6 +2,8 @@ from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from enum import IntEnum
 
+from .const import PANASONIC
+
 try:
     from enum import StrEnum
 except ImportError:
@@ -83,15 +85,51 @@ class DeviceStatus:
     zones: list[DeviceZoneStatus]
 
 class Device(ABC):
+    """Aquarea Device"""
     def __init__(self, info: DeviceInfo, status: DeviceStatus) -> None:
         self._info = info
         self._status = status
-    
+
     @abstractmethod
     async def refresh_data(self) -> None:
-        pass
+        """Refresh device data"""
+
+    @property
+    def device_id(self) -> str:
+        """The device id"""
+        return self._info.device_id
+
+    @property
+    def long_id(self) -> str:
+        """The long id of the device"""
+        return self._info.long_id
+
+    @property
+    def name(self) -> str:
+        """The name of the device"""
+        return self._info.name
+
+    @property
+    def mode(self) -> ExtendedOperationMode:
+        """The operation mode of the device"""
+        return self._status.operation_mode
+
+    @property
+    def version(self) -> str:
+        """The firmware version of the device"""
+        return self._info.firmware_version
+ 
+    @property
+    def manufacturer(self) -> str:
+        """The manufacturer of the device"""
+        return PANASONIC
 
     @property
     def temperature_outdoor(self) -> int:
+        """The outdoor temperature"""
         return self._status.temperature_outdoor
-        
+
+    @property
+    def is_on_error(self) -> bool:
+        """True if the device is in an error state"""
+        return len(self._status.fault_status) > 0

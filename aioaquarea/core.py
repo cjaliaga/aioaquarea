@@ -1,4 +1,5 @@
 """Aquarea Client foy asyncio."""
+from __future__ import annotations
 
 import functools
 import logging
@@ -194,12 +195,13 @@ class Client:
         )
 
         return device_status
-    
+   
     @auth_required
     async def get_device(self, device_info: DeviceInfo | None = None, device_id: str | None = None) -> Device:
+        """Retrieves device"""
         if not device_info and not device_id:
             raise ValueError("Either device_info or device_id must be provided")
-        
+       
         if not device_info:
             devices = await self.get_devices(include_long_id=True)
             device_info = next(filter(lambda d: d.device_id == device_id, devices), None)
@@ -207,6 +209,7 @@ class Client:
         return DeviceImpl(device_info, await self.get_device_status(device_info.long_id), self)
 
 class DeviceImpl(Device):
+    """Device implementation able to auto-refresh using the Aquarea Client"""
     _long_id: str
     _name: str
     _operation_mode: ExtendedOperationMode
@@ -220,6 +223,6 @@ class DeviceImpl(Device):
     def __init__(self, info: DeviceInfo, status: DeviceStatus, client: Client) -> None:
         super().__init__(info, status)
         self._client = client
-    
+   
     async def refresh_data(self) -> None:
         self._status = await self._client.get_device_status(self._info.long_id)
