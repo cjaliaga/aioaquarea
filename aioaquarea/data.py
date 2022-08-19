@@ -1,3 +1,4 @@
+"""Data models for aioaquarea."""
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from enum import IntEnum
@@ -73,6 +74,7 @@ class DeviceInfo:
 
 @dataclass
 class DeviceStatus:
+    """Device status"""
     long_id: str
     operation_status: OperationStatus
     device_status: OperationStatus
@@ -118,7 +120,7 @@ class Device(ABC):
     def version(self) -> str:
         """The firmware version of the device"""
         return self._info.firmware_version
- 
+
     @property
     def manufacturer(self) -> str:
         """The manufacturer of the device"""
@@ -133,3 +135,8 @@ class Device(ABC):
     def is_on_error(self) -> bool:
         """True if the device is in an error state"""
         return len(self._status.fault_status) > 0
+
+    @property
+    def operation_status(self) -> OperationStatus:
+        """The operation status of the device"""
+        return self._status.operation_status

@@ -1,3 +1,5 @@
+"""Errors for aioaquarea."""
+
 try:
     from enum import StrEnum
 except ImportError:
@@ -6,24 +8,15 @@ except ImportError:
 
 class ClientError(Exception):
     """Base exception for all client errors"""
-    pass
-
 
 class RequestFailedError(ClientError):
+    """Exception raised when request to the server fails"""
     def __init__(self, response):
         self.response = response
+        super().__init__()
 
     def __str__(self):
         return f"Invalid response: {self.response.status} - {self.response.reason}"
-
-
-class CommandError(ClientError):
-    def __init__(self, data):
-        self.data = data
-
-    def __str__(self):
-        return f"Command not succesful: {self.data!r}"
-
 
 class ApiError(ClientError):
     """API error"""
@@ -43,8 +36,10 @@ class AuthenticationError(ApiError):
 
 
 class InvalidData(ClientError):
+    """Invalid data"""
     def __init__(self, data):
         self.data = data
+        super().__init__()
 
     def __str__(self):
         return f"Invalid data from server: {self.data!r}"
