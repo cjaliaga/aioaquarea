@@ -3,7 +3,7 @@
 from typing import Tuple
 
 from .core import (Client,Device)
-from .errors import (ClientError, RequestFailedError)
+from .errors import (ClientError, RequestFailedError, AuthenticationError, ApiError)
 from .data import (DeviceInfo, DeviceStatus)
 
 
@@ -12,6 +12,8 @@ __all__: Tuple[str, ...] = (
     "Device",
     "ClientError",
     "RequestFailedError",
+    "AuthenticationError",
+    "ApiError",
     "DeviceInfo",
     "DeviceStatus"
 )
