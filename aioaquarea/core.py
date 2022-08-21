@@ -1,7 +1,7 @@
 """Aquarea Client foy asyncio."""
 from __future__ import annotations
-import asyncio
 
+import asyncio
 import functools
 import logging
 import urllib.parse
@@ -10,33 +10,14 @@ from typing import List, Optional
 
 import aiohttp
 
-from .errors import (
-    InvalidData,
-    AuthenticationError,
-    AuthenticationErrorCodes,
-    ApiError,
-)
-from .const import (
-    AQUAREA_SERVICE_BASE,
-    AQUAREA_SERVICE_CONTRACT,
-    AQUAREA_SERVICE_DEVICES,
-    AQUAREA_SERVICE_LOGIN,
-)
-from .data import (
-    Device,
-    DeviceInfo,
-    DeviceStatus,
-    DeviceZone,
-    DeviceZoneInfo,
-    DeviceZoneStatus,
-    ExtendedOperationMode,
-    FaultError,
-    OperationMode,
-    OperationStatus,
-    SensorMode,
-    Tank,
-    TankStatus,
-)
+from .const import (AQUAREA_SERVICE_BASE, AQUAREA_SERVICE_CONTRACT,
+                    AQUAREA_SERVICE_DEVICES, AQUAREA_SERVICE_LOGIN)
+from .data import (Device, DeviceInfo, DeviceStatus, DeviceZoneInfo,
+                   DeviceZoneStatus, ExtendedOperationMode, FaultError,
+                   OperationMode, OperationStatus, SensorMode, Tank,
+                   TankStatus)
+from .errors import (ApiError, AuthenticationError, AuthenticationErrorCodes,
+                     InvalidData)
 
 
 def auth_required(fn):
@@ -225,7 +206,7 @@ class Client:
         devices: List[DeviceInfo] = []
 
         for record in data["device"]:
-            zones = [DeviceZoneInfo]
+            zones: list[DeviceZoneInfo] = []
 
             for zone_record in record["configration"][0]["zoneInfo"]:
                 zone = DeviceZoneInfo(
