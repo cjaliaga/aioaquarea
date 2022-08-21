@@ -12,22 +12,21 @@ import aiohttp
 
 from .const import (AQUAREA_SERVICE_BASE, AQUAREA_SERVICE_CONTRACT,
                     AQUAREA_SERVICE_DEVICES, AQUAREA_SERVICE_LOGIN)
-from .data import (Device, DeviceInfo, DeviceStatus, DeviceZoneInfo,
-                   DeviceZoneStatus, ExtendedOperationMode, FaultError,
-                   OperationMode, OperationStatus, SensorMode, Tank,
-                   TankStatus)
+from .data import (Device, DeviceInfo, DeviceStatus, DeviceZone,
+                   DeviceZoneInfo, DeviceZoneStatus, ExtendedOperationMode,
+                   FaultError, OperationMode, OperationStatus, SensorMode,
+                   Tank, TankStatus)
 from .errors import (ApiError, AuthenticationError, AuthenticationErrorCodes,
                      InvalidData)
 
 
 def auth_required(fn):
     """Decorator to require authentication and to refresh login if it's able to."""
+
     @functools.wraps(fn)
     async def _wrap(client, *args, **kwargs):
         if client.is_logged is False:
-            client.logger.warning(
-                f"{client}: User is not logged or session is too old"
-            )
+            client.logger.warning(f"{client}: User is not logged or session is too old")
             await client.login()
 
         try:
@@ -38,7 +37,10 @@ def auth_required(fn):
             )
 
             # If the error is invalid credentials, we don't want to retry the request.
-            if exception.error_code == AuthenticationErrorCodes.INVALID_USERNAME_OR_PASSWORD:
+            if (
+                exception.error_code
+                == AuthenticationErrorCodes.INVALID_USERNAME_OR_PASSWORD
+            ):
                 raise
 
             client.logger.warning(f"{client}: Trying to login again.")
@@ -52,7 +54,7 @@ def auth_required(fn):
 
 class Client:
     """Aquarea Client"""
-  
+
     _HEADERS = {
         "Content-Type": "application/x-www-form-urlencoded",
         "Cache-Control": "max-age=0",
@@ -313,6 +315,7 @@ class Client:
             device_info, await self.get_device_status(device_info.long_id), self
         )
 
+
 class TankImpl(Tank):
     """Tank implementation"""
 
@@ -321,6 +324,7 @@ class TankImpl(Tank):
     def __init__(self, status: TankStatus, client: Client) -> None:
         super().__init__(status)
         self._client = client
+
 
 class DeviceImpl(Device):
     """Device implementation able to auto-refresh using the Aquarea Client"""

@@ -3,8 +3,9 @@ from __future__ import annotations
 
 from typing import Tuple
 
-from .core import Client, Device
-from .data import DeviceAction, DeviceInfo, DeviceStatus
+from .core import Client
+from .data import (Device, DeviceAction, DeviceInfo, DeviceStatus,
+                   ExtendedOperationMode, OperationStatus, Tank)
 from .errors import (ApiError, AuthenticationError, ClientError,
                      RequestFailedError)
 
@@ -18,4 +19,7 @@ __all__: Tuple[str, ...] = (
     "DeviceInfo",
     "DeviceStatus",
     "DeviceAction",
+    "Tank",
+    "OperationStatus",
+    "ExtendedOperationMode",
 )
