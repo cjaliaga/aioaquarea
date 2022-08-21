@@ -10,14 +10,27 @@ from typing import List, Optional
 
 import aiohttp
 
-from .const import (AQUAREA_SERVICE_BASE, AQUAREA_SERVICE_CONTRACT,
-                    AQUAREA_SERVICE_DEVICES, AQUAREA_SERVICE_LOGIN)
-from .data import (Device, DeviceInfo, DeviceStatus, DeviceZone,
-                   DeviceZoneInfo, DeviceZoneStatus, ExtendedOperationMode,
-                   FaultError, OperationMode, OperationStatus, SensorMode,
-                   Tank, TankStatus)
-from .errors import (ApiError, AuthenticationError, AuthenticationErrorCodes,
-                     InvalidData)
+from .const import (
+    AQUAREA_SERVICE_BASE,
+    AQUAREA_SERVICE_CONTRACT,
+    AQUAREA_SERVICE_DEVICES,
+    AQUAREA_SERVICE_LOGIN,
+)
+from .data import (
+    Device,
+    DeviceInfo,
+    DeviceStatus,
+    DeviceZoneInfo,
+    DeviceZoneStatus,
+    ExtendedOperationMode,
+    FaultError,
+    OperationMode,
+    OperationStatus,
+    SensorMode,
+    Tank,
+    TankStatus,
+)
+from .errors import ApiError, AuthenticationError, AuthenticationErrorCodes, InvalidData
 
 
 def auth_required(fn):
@@ -40,6 +53,7 @@ def auth_required(fn):
             if (
                 exception.error_code
                 == AuthenticationErrorCodes.INVALID_USERNAME_OR_PASSWORD
+                or not client.is_refresh_login_enabled
             ):
                 raise
 
@@ -69,6 +83,7 @@ class Client:
         session: aiohttp.ClientSession,
         username: str,
         password: str,
+        refresh_login: bool = True,
         logger: Optional[logging.Logger] = None,
     ):
 
@@ -76,6 +91,7 @@ class Client:
         self._sess = session
         self._username = username
         self._password = password
+        self._refresh_login = refresh_login
         self._logger = logger or logging.getLogger("aioaquarea")
         self._token_expiration: Optional[datetime] = None
         self._last_login: datetime = datetime.min
@@ -89,6 +105,11 @@ class Client:
     def password(self) -> str:
         """Return the password"""
         return self._password
+
+    @property
+    def is_refresh_login_enabled(self) -> bool:
+        """Return True if the client is allowed to refresh the login"""
+        return self._refresh_login
 
     @property
     def token_expiration(self) -> Optional[datetime]:
