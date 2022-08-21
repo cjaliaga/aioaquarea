@@ -1,4 +1,5 @@
 """Errors for aioaquarea."""
+from __future__ import annotations
 
 try:
     from enum import StrEnum

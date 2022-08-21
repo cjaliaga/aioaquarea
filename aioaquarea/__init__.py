@@ -1,5 +1,5 @@
 """Asynchronous library to control Panasonic Aquarea devices"""
-
+from __future__ import annotations
 from typing import Tuple
 
 from .core import (Client,Device)

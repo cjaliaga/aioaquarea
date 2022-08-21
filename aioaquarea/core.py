@@ -27,6 +27,7 @@ from .data import (
     DeviceInfo,
     DeviceStatus,
     DeviceZone,
+    DeviceZoneInfo,
     DeviceZoneStatus,
     ExtendedOperationMode,
     FaultError,
@@ -34,6 +35,7 @@ from .data import (
     OperationStatus,
     SensorMode,
     Tank,
+    TankStatus,
 )
 
 
@@ -69,7 +71,7 @@ def auth_required(fn):
 
 class Client:
     """Aquarea Client"""
-    
+  
     _HEADERS = {
         "Content-Type": "application/x-www-form-urlencoded",
         "Cache-Control": "max-age=0",
@@ -223,10 +225,10 @@ class Client:
         devices: List[DeviceInfo] = []
 
         for record in data["device"]:
-            zones = [DeviceZone]
+            zones = [DeviceZoneInfo]
 
             for zone_record in record["configration"][0]["zoneInfo"]:
-                zone = DeviceZone(
+                zone = DeviceZoneInfo(
                     zone_record["zoneId"],
                     zone_record["zoneName"],
                     zone_record["zoneType"],
@@ -291,7 +293,7 @@ class Client:
             device.get("direction"),
             device.get("pumpDuty"),
             [
-                Tank(
+                TankStatus(
                     OperationStatus(tank_status["operationStatus"]),
                     tank_status["temparatureNow"],
                     tank_status["heatMax"],
@@ -330,23 +332,29 @@ class Client:
             device_info, await self.get_device_status(device_info.long_id), self
         )
 
+class TankImpl(Tank):
+    """Tank implementation"""
+
+    _client: Client
+
+    def __init__(self, status: TankStatus, client: Client) -> None:
+        super().__init__(status)
+        self._client = client
 
 class DeviceImpl(Device):
     """Device implementation able to auto-refresh using the Aquarea Client"""
-
-    _long_id: str
-    _name: str
-    _operation_mode: ExtendedOperationMode
-    _direction: int
-    _status: int
-    _temperature_outdoor: int
-    _tank: Tank
-    _firmware_version: str
-    _zones: list[DeviceZoneStatus] = []
 
     def __init__(self, info: DeviceInfo, status: DeviceStatus, client: Client) -> None:
         super().__init__(info, status)
         self._client = client
 
+        if self.has_tank:
+            self._tank = TankImpl(self._status.tank_status[0], self._client)
+
     async def refresh_data(self) -> None:
         self._status = await self._client.get_device_status(self._info.long_id)
+
+        if self.has_tank:
+            self._tank = TankImpl(self._status.tank_status[0], self._client)
+
+        self.__build_zones__()
