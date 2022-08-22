@@ -11,7 +11,7 @@ build-backend = "setuptools.build_meta"
 name = "aioaquarea"
 version = "0.1.0"
 authors = [
-  { name="Carlos J. Aliaga", email="author@example.com" },
+  { name="Carlos J. Aliaga", email="dev@cjaliaga.net" },
 ]
 description = "Asynchronous library to control Panasonic Aquarea devices"
 readme = "README.md"

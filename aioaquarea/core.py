@@ -10,27 +10,14 @@ from typing import List, Optional
 
 import aiohttp
 
-from .const import (
-    AQUAREA_SERVICE_BASE,
-    AQUAREA_SERVICE_CONTRACT,
-    AQUAREA_SERVICE_DEVICES,
-    AQUAREA_SERVICE_LOGIN,
-)
-from .data import (
-    Device,
-    DeviceInfo,
-    DeviceStatus,
-    DeviceZoneInfo,
-    DeviceZoneStatus,
-    ExtendedOperationMode,
-    FaultError,
-    OperationMode,
-    OperationStatus,
-    SensorMode,
-    Tank,
-    TankStatus,
-)
-from .errors import ApiError, AuthenticationError, AuthenticationErrorCodes, InvalidData
+from .const import (AQUAREA_SERVICE_BASE, AQUAREA_SERVICE_CONTRACT,
+                    AQUAREA_SERVICE_DEVICES, AQUAREA_SERVICE_LOGIN)
+from .data import (Device, DeviceInfo, DeviceStatus, DeviceZoneInfo,
+                   DeviceZoneStatus, ExtendedOperationMode, FaultError,
+                   OperationMode, OperationStatus, SensorMode, Tank,
+                   TankStatus)
+from .errors import (ApiError, AuthenticationError, AuthenticationErrorCodes,
+                     InvalidData)
 
 
 def auth_required(fn):
