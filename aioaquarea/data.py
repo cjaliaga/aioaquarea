@@ -322,3 +322,12 @@ class Device(ABC):
         """True if the device supports cooling"""
         zone = self.zones.get(zone_id, None)
         return zone is not None and zone.cool_mode
+
+    @abstractmethod
+    async def __set_mode__(self, mode: ExtendedOperationMode) -> None:
+        """Set the operation mode of the device"""
+
+    async def turn_off(self) -> None:
+        """Turn off the device"""
+        if self.operation_status == OperationStatus.ON:
+            await self.__set_mode__(ExtendedOperationMode.OFF)
