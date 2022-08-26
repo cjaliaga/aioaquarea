@@ -10,12 +10,13 @@ from typing import List, Optional
 
 import aiohttp
 
-from .const import (AQUAREA_SERVICE_BASE, AQUAREA_SERVICE_CONTRACT,
-                    AQUAREA_SERVICE_DEVICES, AQUAREA_SERVICE_LOGIN)
+from .const import (AQUAREA_SERVICE_A2W_STATUS_DISPLAY, AQUAREA_SERVICE_BASE,
+                    AQUAREA_SERVICE_CONTRACT, AQUAREA_SERVICE_DEVICES,
+                    AQUAREA_SERVICE_LOGIN)
 from .data import (Device, DeviceInfo, DeviceStatus, DeviceZoneInfo,
                    DeviceZoneStatus, ExtendedOperationMode, FaultError,
                    OperationMode, OperationStatus, SensorMode, Tank,
-                   TankStatus)
+                   TankStatus, UpdateOperationMode)
 from .errors import (ApiError, AuthenticationError, AuthenticationErrorCodes,
                      InvalidData)
 
@@ -57,7 +58,7 @@ class Client:
     """Aquarea Client"""
 
     _HEADERS = {
-        "Content-Type": "application/x-www-form-urlencoded",
+        # "Content-Type": "application/x-www-form-urlencoded",
         "Cache-Control": "max-age=0",
         "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8",
         "Accept-Encoding": "deflate, br",
@@ -123,13 +124,16 @@ class Client:
         url: str,
         referer: str = AQUAREA_SERVICE_BASE,
         throw_on_error=True,
+        content_type: str = "application/x-www-form-urlencoded",
         **kwargs,
     ) -> aiohttp.ClientResponse:
         """Make a request to Aquarea and return the response"""
 
-        headers = kwargs.get("headers", {})
-        headers.update(self._HEADERS)
+        headers = self._HEADERS.copy()
+        request_headers = kwargs.get("headers", {})
+        headers.update(request_headers)
         headers["referer"] = referer
+        headers["content-type"] = content_type
         kwargs["headers"] = headers
 
         resp = await self._sess.request(method, AQUAREA_SERVICE_BASE + url, **kwargs)
@@ -270,13 +274,16 @@ class Client:
         data = await response.json()
 
         device = data.get("status")[0]
+        operation_mode_value = device.get("operationMode")
 
         device_status = DeviceStatus(
             long_id,
             OperationStatus(device.get("operationStatus")),
             OperationStatus(device.get("deiceStatus")),
             device.get("outdoorNow"),
-            ExtendedOperationMode(device.get("operationMode")),
+            ExtendedOperationMode.OFF
+            if operation_mode_value == 99
+            else ExtendedOperationMode(operation_mode_value),
             [
                 FaultError(fault_status["errorMessage"], fault_status["errorCode"])
                 for fault_status in device.get("faultStatus", [])
@@ -323,15 +330,139 @@ class Client:
             device_info, await self.get_device_status(device_info.long_id), self
         )
 
+    @auth_required
+    async def post_device_operation_status(
+        self, long_device_id: str, new_operation_status: OperationStatus
+    ) -> None:
+        """Post device operation status"""
+        data = {
+            "status": [
+                {
+                    "deviceGuid": long_device_id,
+                    "operationStatus": new_operation_status.value,
+                }
+            ]
+        }
+
+        response = await self.request(
+            "POST",
+            f"{AQUAREA_SERVICE_DEVICES}/{long_device_id}",
+            referer=AQUAREA_SERVICE_A2W_STATUS_DISPLAY,
+            content_type="application/json",
+            json=data,
+        )
+
+        return None
+
+    @auth_required
+    async def post_device_tank_temperature(
+        self, long_device_id: str, new_temperature: int
+    ) -> None:
+        """Post device tank temperature"""
+        data = {
+            "status": [
+                {
+                    "deviceGuid": long_device_id,
+                    "tankStatus": [
+                        {
+                            "heatSet": new_temperature,
+                        }
+                    ],
+                }
+            ]
+        }
+
+        response = await self.request(
+            "POST",
+            f"{AQUAREA_SERVICE_DEVICES}/{long_device_id}",
+            referer=AQUAREA_SERVICE_A2W_STATUS_DISPLAY,
+            content_type="application/json",
+            json=data,
+        )
+
+    @auth_required
+    async def post_device_tank_operation_status(
+        self,
+        long_device_id: str,
+        new_operation_status: OperationStatus,
+        new_device_operation_status: OperationStatus = OperationStatus.ON,
+    ) -> None:
+        """Post device tank operation status"""
+        data = {
+            "status": [
+                {
+                    "deviceGuid": long_device_id,
+                    "operationStatus": new_device_operation_status.value,
+                    "tankStatus": [
+                        {
+                            "operationStatus": new_operation_status.value,
+                        }
+                    ],
+                }
+            ]
+        }
+
+        response = await self.request(
+            "POST",
+            f"{AQUAREA_SERVICE_DEVICES}/{long_device_id}",
+            referer=AQUAREA_SERVICE_A2W_STATUS_DISPLAY,
+            content_type="application/json",
+            json=data,
+        )
+
+    @auth_required
+    async def post_device_operation_update(
+        self,
+        long_id: str,
+        mode: UpdateOperationMode,
+        zones: dict[int, OperationStatus],
+        operation_status: OperationStatus.ON,
+    ) -> None:
+        """Post device operation update"""
+        data = {
+            "status": [
+                {
+                    "deviceGuid": long_id,
+                    "operationMode": mode.value,
+                    "operationStatus": operation_status.value,
+                    "zoneStatus": [
+                        {
+                            "zoneId": zone_id,
+                            "operationStatus": zones[zone_id].value,
+                        }
+                        for zone_id in zones
+                    ],
+                }
+            ]
+        }
+
+        response = await self.request(
+            "POST",
+            f"{AQUAREA_SERVICE_DEVICES}/{long_id}",
+            referer=AQUAREA_SERVICE_A2W_STATUS_DISPLAY,
+            content_type="application/json",
+            json=data,
+        )
+
 
 class TankImpl(Tank):
     """Tank implementation"""
 
     _client: Client
 
-    def __init__(self, status: TankStatus, client: Client) -> None:
-        super().__init__(status)
+    def __init__(self, status: TankStatus, device: Device, client: Client) -> None:
+        super().__init__(status, device)
         self._client = client
+
+    async def __set_target_temperature__(self, value: int) -> None:
+        await self._client.post_device_tank_temperature(self._device.long_id, value)
+
+    async def __set_operation_status__(
+        self, status: OperationStatus, device_status: OperationStatus
+    ) -> None:
+        await self._client.post_device_tank_operation_status(
+            self._device.long_id, status, device_status
+        )
 
 
 class DeviceImpl(Device):
@@ -342,12 +473,48 @@ class DeviceImpl(Device):
         self._client = client
 
         if self.has_tank:
-            self._tank = TankImpl(self._status.tank_status[0], self._client)
+            self._tank = TankImpl(self._status.tank_status[0], self, self._client)
 
     async def refresh_data(self) -> None:
         self._status = await self._client.get_device_status(self._info.long_id)
 
         if self.has_tank:
-            self._tank = TankImpl(self._status.tank_status[0], self._client)
+            self._tank = TankImpl(self._status.tank_status[0], self, self._client)
 
         self.__build_zones__()
+
+    async def __set_operation_status__(self, status: OperationStatus) -> None:
+        await self._client.post_device_operation_status(self.long_id, status)
+
+    async def set_mode(
+        self, mode: UpdateOperationMode, zone_id: int | None = None
+    ) -> None:
+        zones: dict[int, OperationStatus] = {}
+
+        for zone in self.zones.values():
+            if zone_id is None or zone.zone_id == zone_id:
+                zones[zone.zone_id] = (
+                    OperationStatus.OFF
+                    if UpdateOperationMode.OFF == mode
+                    else OperationStatus.ON
+                )
+            else:
+                zones[zone.zone_id] = zone.status
+
+        tank_off = (
+            not self.has_tank
+            or self.has_tank
+            and self.tank.operation_status == OperationStatus.OFF
+        )
+
+        operation_status = (
+            OperationStatus.OFF
+            if mode == UpdateOperationMode.OFF
+            and tank_off
+            and all(status == OperationStatus.OFF for status in zones.values())
+            else OperationStatus.ON
+        )
+
+        await self._client.post_device_operation_update(
+            self.long_id, mode, zones, operation_status
+        )
