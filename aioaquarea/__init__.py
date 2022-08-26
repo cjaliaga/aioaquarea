@@ -24,4 +24,5 @@ __all__: Tuple[str, ...] = (
     "Tank",
     "OperationStatus",
     "ExtendedOperationMode",
+    "UpdateOperationMode",
 )
