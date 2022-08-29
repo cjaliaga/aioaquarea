@@ -43,7 +43,7 @@ class ExtendedOperationMode(IntEnum):
 
 class UpdateOperationMode(IntEnum):
     """Values used to change the operation mode of the device"""
-   
+
     OFF = 0
     HEAT = 2
     COOL = 3
@@ -409,11 +409,14 @@ class Device(ABC):
     async def set_mode(
         self, mode: UpdateOperationMode, zone_id: int | None = None
     ) -> None:
-        """Set the operation mode of the device. If the zone_id is provided, it'll try to affect only the given zone.
-        Some devices don't support different modes per zone, so the specified mode (heat or cool) will affect the whole device.
+        """Set the operation mode of the device. If the zone_id is provided,
+         it'll try to affect only the given zone.
+        Some devices don't support different modes per zone, so the specified mode (heat or cool)
+         will affect the whole device.
         We will try however to turn the zone 'on' or 'off' if possible as part of the mode change.
 
-        If we're turning the last active zone off, the device will be turned off completely, unless it has an active tank.
+        If we're turning the last active zone off, the device will be turned off completely, 
+        unless it has an active tank.
 
         :param mode: The mode to set
         :param zone_id: The zone id to set the mode for

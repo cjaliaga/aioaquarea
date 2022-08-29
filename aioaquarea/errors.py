@@ -57,6 +57,7 @@ class AuthenticationErrorCodes(StrEnum):
 
     SESSION_CLOSED = "1001-0001"
     INVALID_USERNAME_OR_PASSWORD = "1001-1401"
+    INVALID_CREDENTIALS = "1000-1401"
 
     @staticmethod
     def values() -> list[str]:
