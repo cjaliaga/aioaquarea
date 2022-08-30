@@ -41,6 +41,15 @@ class ExtendedOperationMode(IntEnum):
     AUTO_COOL = 4
 
 
+class UpdateOperationMode(IntEnum):
+    """Values used to change the operation mode of the device"""
+
+    OFF = 0
+    HEAT = 2
+    COOL = 3
+    AUTO = 8
+
+
 class DeviceAction(IntEnum):
     """Device action"""
 
@@ -125,6 +134,22 @@ class DeviceStatus:
     zones: list[DeviceZoneStatus]
 
 
+@dataclass
+class OperationStatusUpdate:
+    """Operation status update for a lista of devices"""
+
+    status: list[DeviceOperationStatusUpdate]
+
+
+@dataclass
+class DeviceOperationStatusUpdate:
+    """Device operation status update"""
+
+    # pylint: disable=invalid-name
+    deviceGuid: str
+    operationStatus: OperationStatus
+
+
 class DeviceZone:
     """Device zone"""
 
@@ -137,26 +162,32 @@ class DeviceZone:
 
     @property
     def zone_id(self) -> int:
+        """Zone ID"""
         return self._info.zone_id
 
     @property
     def name(self) -> str:
+        """Zone name"""
         return self._info.name
 
     @property
     def operation_status(self) -> OperationStatus:
+        """Gets the zone operation status (ON/OFF)"""
         return self._status.operation_status
 
     @property
     def temperature(self) -> int:
+        """Gets the zone temperature"""
         return self._status.temperature
 
     @property
     def cool_mode(self) -> bool:
+        """Gets if the zone supports cool mode"""
         return self._info.cool_mode
 
     @property
     def type(self) -> ZoneType:
+        """Gets the zone type"""
         return self._info.type
 
 
@@ -165,8 +196,9 @@ class Tank(ABC):
 
     _status: TankStatus
 
-    def __init__(self, tank_status: TankStatus) -> None:
+    def __init__(self, tank_status: TankStatus, device: Device) -> None:
         self._status = tank_status
+        self._device = device
         super().__init__()
 
     @property
@@ -194,6 +226,41 @@ class Tank(ABC):
         """The target temperature of the tank"""
         return self._status.heat_set
 
+    async def set_target_temperature(self, value: int):
+        """Sets the target temperature of the tank if supported"""
+        if self.target_temperature != value and self.heat_min < value < self.heat_max:
+            await self.__set_target_temperature__(value)
+
+    @abstractmethod
+    async def __set_target_temperature__(self, value: int) -> None:
+        """Sets the target temperature of the tank if supported"""
+
+    @abstractmethod
+    async def __set_operation_status__(
+        self, status: OperationStatus, device_status: OperationStatus
+    ) -> None:
+        """Set the operation status of the device"""
+
+    async def turn_off(self) -> None:
+        """Turn off the tank"""
+        if self.operation_status == OperationStatus.ON:
+            # Check if device has any active zones
+            device_status = (
+                OperationStatus.ON
+                if any(
+                    zone.operation_status == OperationStatus.ON
+                    for zone in self._device.zones.values()
+                )
+                else OperationStatus.OFF
+            )
+            await self.__set_operation_status__(OperationStatus.OFF, device_status)
+
+    async def turn_on(self) -> None:
+        """Turn on the tank"""
+        if self.operation_status == OperationStatus.OFF:
+            # Check if device has any active zones
+            await self.__set_operation_status__(OperationStatus.ON, OperationStatus.ON)
+
 
 class Device(ABC):
     """Aquarea Device"""
@@ -209,6 +276,7 @@ class Device(ABC):
     def __build_zones__(self) -> None:
         for zone in self._info.zones:
             zone_id = zone.zone_id
+            # pylint: disable=cell-var-from-loop
             zone_status = next(
                 filter(lambda z: z.zone_id == zone_id, self._status.zones), None
             )
@@ -319,6 +387,37 @@ class Device(ABC):
         return self._zones
 
     def support_cooling(self, zone_id: int = 1) -> bool:
-        """True if the device supports cooling"""
+        """True if the device supports cooling in the given zone"""
         zone = self.zones.get(zone_id, None)
         return zone is not None and zone.cool_mode
+
+    @abstractmethod
+    async def __set_operation_status__(self, status: OperationStatus) -> None:
+        """Set the operation status of the device"""
+
+    async def turn_off(self) -> None:
+        """Turn off the device"""
+        if self.operation_status == OperationStatus.ON or self.is_on_error:
+            await self.__set_operation_status__(OperationStatus.OFF)
+
+    async def turn_on(self) -> None:
+        """Turn on the device"""
+        if self.operation_status == OperationStatus.OFF:
+            await self.__set_operation_status__(OperationStatus.ON)
+
+    @abstractmethod
+    async def set_mode(
+        self, mode: UpdateOperationMode, zone_id: int | None = None
+    ) -> None:
+        """Set the operation mode of the device. If the zone_id is provided,
+         it'll try to affect only the given zone.
+        Some devices don't support different modes per zone, so the specified mode (heat or cool)
+         will affect the whole device.
+        We will try however to turn the zone 'on' or 'off' if possible as part of the mode change.
+
+        If we're turning the last active zone off, the device will be turned off completely, 
+        unless it has an active tank.
+
+        :param mode: The mode to set
+        :param zone_id: The zone id to set the mode for
+        """
