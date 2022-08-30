@@ -145,7 +145,7 @@ class Client:
             errors = await self.look_for_errors(resp)
             # If we have errors, let's look for authentication errors
             for error in errors:
-                if error.error_code in AuthenticationErrorCodes.values():
+                if error.error_code in list(AuthenticationErrorCodes):
                     raise AuthenticationError(error.error_code, error.error_message)
 
                 raise ApiError(error.error_code, error.error_message)
