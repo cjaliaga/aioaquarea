@@ -2,11 +2,11 @@
 from __future__ import annotations
 
 import asyncio
+from datetime import datetime, timezone
 import functools
 import logging
-import urllib.parse
-from datetime import datetime, timezone
 from typing import List, Optional
+import urllib.parse
 
 import aiohttp
 
