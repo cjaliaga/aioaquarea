@@ -10,15 +10,30 @@ from typing import List, Optional
 
 import aiohttp
 
-from .const import (AQUAREA_SERVICE_A2W_STATUS_DISPLAY, AQUAREA_SERVICE_BASE,
-                    AQUAREA_SERVICE_CONTRACT, AQUAREA_SERVICE_DEVICES,
-                    AQUAREA_SERVICE_LOGIN)
-from .data import (Device, DeviceInfo, DeviceStatus, DeviceZoneInfo,
-                   DeviceZoneStatus, ExtendedOperationMode, FaultError,
-                   OperationMode, OperationStatus, SensorMode, Tank,
-                   TankStatus, UpdateOperationMode)
-from .errors import (ApiError, AuthenticationError, AuthenticationErrorCodes,
-                     InvalidData)
+from .const import (
+    AQUAREA_SERVICE_A2W_STATUS_DISPLAY,
+    AQUAREA_SERVICE_BASE,
+    AQUAREA_SERVICE_CONTRACT,
+    AQUAREA_SERVICE_DEVICES,
+    AQUAREA_SERVICE_LOGIN,
+)
+from .data import (
+    Device,
+    DeviceInfo,
+    DeviceStatus,
+    DeviceZoneInfo,
+    DeviceZoneStatus,
+    ExtendedOperationMode,
+    FaultError,
+    OperationMode,
+    OperationStatus,
+    SensorMode,
+    Tank,
+    TankStatus,
+    UpdateOperationMode,
+    ZoneSensor,
+)
+from .errors import ApiError, AuthenticationError, AuthenticationErrorCodes, InvalidData
 
 
 def auth_required(fn):
@@ -223,14 +238,15 @@ class Client:
             zones: list[DeviceZoneInfo] = []
 
             for zone_record in record["configration"][0]["zoneInfo"]:
+                cool_mode = zone_record["coolMode"] == "enable"
                 zone = DeviceZoneInfo(
                     zone_record["zoneId"],
                     zone_record["zoneName"],
                     zone_record["zoneType"],
-                    zone_record["coolMode"] == "enable",
-                    SensorMode(zone_record["zoneSensor"]),
+                    cool_mode,
+                    ZoneSensor(zone_record["zoneSensor"]),
                     SensorMode(zone_record["heatSensor"]),
-                    SensorMode(zone_record["coolSensor"]),
+                    SensorMode(zone_record["coolSensor"]) if cool_mode else None,
                 )
                 zones.append(zone)
 
@@ -305,6 +321,12 @@ class Client:
                     zone_status["zoneId"],
                     zone_status["temparatureNow"],
                     OperationStatus(zone_status["operationStatus"]),
+                    zone_status["heatMax"],
+                    zone_status["heatMin"],
+                    zone_status["heatSet"],
+                    zone_status["coolMax"],
+                    zone_status["coolMin"],
+                    zone_status["coolSet"],
                 )
                 for zone_status in device.get("zoneStatus", [])
             ],
@@ -444,6 +466,49 @@ class Client:
             json=data,
         )
 
+    async def post_device_zone_heat_temperature(
+        self, long_id: str, zone_id: int, temperature: int
+    ) -> None:
+        """Post device zone heat temperature"""
+        return await self._post_device_zone_temperature(
+            long_id, zone_id, temperature, "heatSet"
+        )
+
+    async def post_device_zone_cool_temperature(
+        self, long_id: str, zone_id: int, temperature: int
+    ) -> None:
+        """Post device zone cool temperature"""
+        return await self._post_device_zone_temperature(
+            long_id, zone_id, temperature, "coolSet"
+        )
+
+    @auth_required
+    async def _post_device_zone_temperature(
+        self, long_id: str, zone_id: int, temperature: int, key: str
+    ) -> None:
+        """Post device zone temperature"""
+        data = {
+            "status": [
+                {
+                    "deviceGuid": long_id,
+                    "zoneStatus": [
+                        {
+                            "zoneId": zone_id,
+                            key: temperature,
+                        }
+                    ],
+                }
+            ]
+        }
+
+        response = await self.request(
+            "POST",
+            f"{AQUAREA_SERVICE_DEVICES}/{long_id}",
+            referer=AQUAREA_SERVICE_A2W_STATUS_DISPLAY,
+            content_type="application/json",
+            json=data,
+        )
+
 
 class TankImpl(Tank):
     """Tank implementation"""
@@ -518,3 +583,15 @@ class DeviceImpl(Device):
         await self._client.post_device_operation_update(
             self.long_id, mode, zones, operation_status
         )
+
+    async def set_temperature(
+        self, temperature: int, zone_id: int | None = None
+    ) -> None:
+        if self.mode in [ExtendedOperationMode.AUTO_COOL, ExtendedOperationMode.COOL]:
+            await self._client.post_device_zone_cool_temperature(
+                self.long_id, zone_id, temperature
+            )
+        elif self.mode in [ExtendedOperationMode.AUTO_HEAT, ExtendedOperationMode.HEAT]:
+            await self._client.post_device_zone_heat_temperature(
+                self.long_id, zone_id, temperature
+            )
