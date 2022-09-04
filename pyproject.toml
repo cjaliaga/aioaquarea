@@ -30,3 +30,6 @@ dependencies = [
 [project.urls]
 "Homepage" = "https://github.com/cjaliaga/aioaquarea"
 "Bug Tracker" = "https://github.com/cjaliaga/aioaquarea/issues"
+
+[tool.black]
+target-version = ["py39", "py310"]
