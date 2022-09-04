@@ -34,6 +34,8 @@ class OperationMode(StrEnum):
 
 
 class OperationStatus(IntEnum):
+    """Operation status"""
+
     ON = 1
     OFF = 0
 
@@ -79,6 +81,8 @@ class DeviceDirection(IntEnum):
 
 @dataclass
 class TankStatus:
+    """Tank status"""
+
     operation_status: OperationStatus
     temperature: int
     heat_max: int
@@ -249,6 +253,11 @@ class DeviceZone:
     def heat_min(self) -> int | None:
         """Gets the minimum allowed temperature for heat mode of the zone"""
         return self._status.heat_min
+
+    @property
+    def supports_set_temperature(self) -> bool:
+        """Gets if the zone supports setting the temperature"""
+        return self.sensor_mode == ZoneSensor.INTERNAL
 
 
 class Tank(ABC):

@@ -587,6 +587,9 @@ class DeviceImpl(Device):
     async def set_temperature(
         self, temperature: int, zone_id: int | None = None
     ) -> None:
+        if not self.zones.get(zone_id).supports_set_temperature:
+            return
+
         if self.mode in [ExtendedOperationMode.AUTO_COOL, ExtendedOperationMode.COOL]:
             await self._client.post_device_zone_cool_temperature(
                 self.long_id, zone_id, temperature
