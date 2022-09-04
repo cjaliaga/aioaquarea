@@ -8,6 +8,8 @@
         "**/*.pyc": true,
         "**/__pycache__": true
     },
+    "editor.formatOnSave": true,
+    "python.formatting.provider": "black",
     "python.linting.pylintEnabled": true,
     "python.linting.enabled": true
 }

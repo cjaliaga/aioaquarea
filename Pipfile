@@ -4,11 +4,12 @@ verify_ssl = true
 name = "pypi"
 
 [packages]
-aiohttp = "*"
+aiohttp = "<4.0"
 strenum = "*"
 
 [dev-packages]
 pylint = "*"
+black = "*"
 
 [requires]
 python_version = "3.10"

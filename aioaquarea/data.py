@@ -13,9 +13,18 @@ except ImportError:
     from strenum import StrEnum
 
 
-class SensorMode(StrEnum):
-    DIRECT = "Direct"
+class ZoneSensor(StrEnum):
+    """Zone sensor types"""
+
     EXTERNAL = "External"
+    INTERNAL = "Internal"
+
+
+class SensorMode(StrEnum):
+    """Sensor mode"""
+
+    DIRECT = "Direct"
+    COMPENSATION_CURVE = "Compensation Curve"
 
 
 class OperationMode(StrEnum):
@@ -25,6 +34,8 @@ class OperationMode(StrEnum):
 
 
 class OperationStatus(IntEnum):
+    """Operation status"""
+
     ON = 1
     OFF = 0
 
@@ -70,6 +81,8 @@ class DeviceDirection(IntEnum):
 
 @dataclass
 class TankStatus:
+    """Tank status"""
+
     operation_status: OperationStatus
     temperature: int
     heat_max: int
@@ -91,9 +104,9 @@ class DeviceZoneInfo:
     name: str
     type: ZoneType
     cool_mode: bool
-    zone_sensor: SensorMode
+    zone_sensor: ZoneSensor
     heat_sensor: SensorMode
-    cool_sensor: SensorMode
+    cool_sensor: SensorMode | None
 
 
 @dataclass
@@ -103,6 +116,12 @@ class DeviceZoneStatus:
     zone_id: int
     temperature: int
     operation_status: OperationStatus
+    heat_max: int | None
+    heat_min: int | None
+    heat_set: int | None
+    cool_max: int | None
+    cool_min: int | None
+    cool_set: int | None
 
 
 @dataclass
@@ -189,6 +208,56 @@ class DeviceZone:
     def type(self) -> ZoneType:
         """Gets the zone type"""
         return self._info.type
+
+    @property
+    def sensor_mode(self) -> ZoneSensor:
+        """Gets the zone sensor mode"""
+        return self._info.zone_sensor
+
+    @property
+    def heat_sensor_mode(self) -> SensorMode:
+        """Gets the heat sensor mode"""
+        return self._info.heat_sensor
+
+    @property
+    def cool_sensor_mode(self) -> SensorMode | None:
+        """Gets the heat sensor mode"""
+        return self._info.cool_sensor
+
+    @property
+    def cool_target_temperature(self) -> int | None:
+        """Gets the target temperature for cool mode of the zone"""
+        return self._status.cool_set
+
+    @property
+    def heat_target_temperature(self) -> int | None:
+        """Gets the target temperature for heat mode of the zone"""
+        return self._status.heat_set
+
+    @property
+    def cool_max(self) -> int | None:
+        """Gets the maximum allowed temperature for cool mode of the zone"""
+        return self._status.cool_max
+
+    @property
+    def cool_min(self) -> int | None:
+        """Gets the minimum allowed temperature for cool mode of the zone"""
+        return self._status.cool_min
+
+    @property
+    def heat_max(self) -> int | None:
+        """Gets the maximum allowed temperature for heat mode of the zone"""
+        return self._status.heat_max
+
+    @property
+    def heat_min(self) -> int | None:
+        """Gets the minimum allowed temperature for heat mode of the zone"""
+        return self._status.heat_min
+
+    @property
+    def supports_set_temperature(self) -> bool:
+        """Gets if the zone supports setting the temperature"""
+        return self.sensor_mode == ZoneSensor.INTERNAL
 
 
 class Tank(ABC):
@@ -415,9 +484,18 @@ class Device(ABC):
          will affect the whole device.
         We will try however to turn the zone 'on' or 'off' if possible as part of the mode change.
 
-        If we're turning the last active zone off, the device will be turned off completely, 
+        If we're turning the last active zone off, the device will be turned off completely,
         unless it has an active tank.
 
         :param mode: The mode to set
         :param zone_id: The zone id to set the mode for
+        """
+
+    @abstractmethod
+    async def set_temperature(
+        self, temperature: int, zone_id: int | None = None
+    ) -> None:
+        """Set the temperature of the zone provided for the current device mode (heat/cool).
+        :param temperature: The temperature to set
+        :param zone_id: The zone id to set the temperature for
         """
