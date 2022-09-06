@@ -24,7 +24,7 @@ class SensorMode(StrEnum):
     """Sensor mode"""
 
     DIRECT = "Direct"
-    COMPENSATION_CURVE = "Compensation Curve"
+    COMPENSATION_CURVE = "Compensation curve"
 
 
 class OperationMode(StrEnum):
