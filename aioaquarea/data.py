@@ -258,7 +258,7 @@ class DeviceZone:
     @property
     def supports_set_temperature(self) -> bool:
         """Gets if the zone supports setting the temperature"""
-        return self.sensor_mode == ZoneSensor.INTERNAL
+        return self.sensor_mode != ZoneSensor.EXTERNAL
 
 
 class Tank(ABC):
