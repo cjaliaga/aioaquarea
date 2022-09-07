@@ -18,6 +18,7 @@ class ZoneSensor(StrEnum):
 
     EXTERNAL = "External"
     INTERNAL = "Internal"
+    WATER_TEMPERATURE = "Water temperature"
 
 
 class SensorMode(StrEnum):
