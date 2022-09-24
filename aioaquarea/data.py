@@ -398,6 +398,11 @@ class Device(ABC):
         return len(self._status.fault_status) > 0
 
     @property
+    def current_error(self) -> FaultError | None:
+        """The current error of the device"""
+        return self._status.fault_status[0] if self.is_on_error else None
+
+    @property
     def operation_status(self) -> OperationStatus:
         """The operation status of the device"""
         return self._status.operation_status
