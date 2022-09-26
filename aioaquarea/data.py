@@ -299,7 +299,7 @@ class Tank(ABC):
 
     async def set_target_temperature(self, value: int):
         """Sets the target temperature of the tank if supported"""
-        if self.target_temperature != value and self.heat_min < value < self.heat_max:
+        if self.target_temperature != value and self.heat_min <= value <= self.heat_max:
             await self.__set_target_temperature__(value)
 
     @abstractmethod
