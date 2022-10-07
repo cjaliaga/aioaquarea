@@ -564,7 +564,7 @@ class DeviceImpl(Device):
                     else OperationStatus.ON
                 )
             else:
-                zones[zone.zone_id] = zone.status
+                zones[zone.zone_id] = zone.operation_status
 
         tank_off = (
             not self.has_tank
