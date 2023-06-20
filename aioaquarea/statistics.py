@@ -1,11 +1,21 @@
 """Statistics models for Aquarea"""
 from __future__ import annotations
+
 from dataclasses import dataclass
 
 try:
     from enum import StrEnum
 except ImportError:
     from strenum import StrEnum
+
+
+class DateType(StrEnum):
+    """Date types"""
+
+    DAY = "date"
+    WEEK = "week"
+    MONTH = "month"
+    YEAR = "year"
 
 
 class AggregationType(StrEnum):
@@ -25,7 +35,17 @@ class DataType(StrEnum):
     TOTAL = "Consume"
 
 
+class GenerationDataType(StrEnum):
+    """Generation data type"""
+
+    GHT = "GHT"
+    GHR = "GHR"
+    GHW = "GHW"
+
+
 class DataSetName(StrEnum):
+    """Data set name"""
+
     ENERGY = "energyShowing"
     GENERATED = "generateEnergyShowing"
     COST = "costShowing"
@@ -33,27 +53,47 @@ class DataSetName(StrEnum):
 
 
 class Consumption:
+    """Consumption"""
+
+    def __init__(self, date_data: dict[str, object]):
+        self._data = dict(
+            [
+                (
+                    dataset.get("name"),
+                    dict(
+                        [
+                            (data.get("name"), data.get("values"))
+                            for data in dataset.get("data", [])
+                        ]
+                    ),
+                )
+                for dataset in date_data.get("dataSets", [])
+            ]
+        )
+        self._start_date = date_data.get("startDate")
+        self._aggregation = AggregationType(date_data.get("timeline", {}).get("type"))
+
     @property
-    def energy(self) -> float:
+    def energy(self) -> dict[DataType, list[float | None]]:
         """Energy consumption in kWh"""
-        raise NotImplementedError
+        return self._data.get(DataSetName.ENERGY)
 
     @property
-    def generation(self) -> float:
+    def generation(self) -> dict[GenerationDataType, list[float]]:
         """Energy generation in kWh"""
-        raise NotImplementedError
+        return self._data.get(DataSetName.GENERATED)
 
     @property
-    def cost(self) -> float:
+    def cost(self) -> dict[DataType, list[float]]:
         """Energy cost in configured currency"""
-        raise NotImplementedError
+        return self._data.get(DataSetName.COST)
 
     @property
     def start_date(self) -> str:
         """Start date of the period"""
-        raise NotImplementedError
+        return self._start_date
 
     @property
     def aggregation(self) -> AggregationType:
         """Aggregation type"""
-        raise NotImplementedError
+        return self._aggregation
