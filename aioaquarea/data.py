@@ -506,3 +506,11 @@ class Device(ABC):
         :param temperature: The temperature to set
         :param zone_id: The zone id to set the temperature for
         """
+
+    @abstractmethod
+    async def set_quiet_mode(
+        self, mode: int
+    ) -> None:
+        """Set the quiet mode.
+        :param mode: Quiet mode to set (0..3)
+        """
