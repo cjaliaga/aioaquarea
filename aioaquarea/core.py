@@ -511,14 +511,14 @@ class Client:
 
     @auth_required
     async def post_set_quiet_mode(
-        self, long_id: str, mode: int
+        self, long_id: str, mode: QuietMode
     ) -> None:
         """Post quiet mode"""
         data = {
             "status": [
                 {
                     "deviceGuid": long_id,
-                    "quietMode": mode,
+                    "quietMode": int(mode),
                 }
             ]
         }
@@ -622,6 +622,6 @@ class DeviceImpl(Device):
             )
 
     async def set_quiet_mode(
-        self, mode: int
+        self, mode: QuietMode
     ) -> None:
         await self._client.post_set_quiet_mode(self.long_id, mode)

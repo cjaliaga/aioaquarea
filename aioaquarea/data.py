@@ -81,6 +81,15 @@ class DeviceDirection(IntEnum):
     WATER = 2
 
 
+class QuietMode(IntEnum):
+    """Quiet mode level"""
+
+    OFF = 0
+    LEVEL1 = 1
+    LEVEL2 = 2
+    LEVEL3 = 3
+
+
 @dataclass
 class TankStatus:
     """Tank status"""
@@ -509,8 +518,8 @@ class Device(ABC):
 
     @abstractmethod
     async def set_quiet_mode(
-        self, mode: int
+        self, mode: QuietMode
     ) -> None:
         """Set the quiet mode.
-        :param mode: Quiet mode to set (0..3)
+        :param mode: Quiet mode to set
         """
