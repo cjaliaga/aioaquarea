@@ -509,6 +509,28 @@ class Client:
             json=data,
         )
 
+    @auth_required
+    async def post_set_quiet_mode(
+        self, long_id: str, mode: QuietMode
+    ) -> None:
+        """Post quiet mode"""
+        data = {
+            "status": [
+                {
+                    "deviceGuid": long_id,
+                    "quietMode": mode.value
+                }
+            ]
+        }
+
+        response = await self.request(
+            "POST",
+            f"{AQUAREA_SERVICE_DEVICES}/{long_id}",
+            referer=AQUAREA_SERVICE_A2W_STATUS_DISPLAY,
+            content_type="application/json",
+            json=data,
+        )
+
 
 class TankImpl(Tank):
     """Tank implementation"""
@@ -598,3 +620,8 @@ class DeviceImpl(Device):
             await self._client.post_device_zone_heat_temperature(
                 self.long_id, zone_id, temperature
             )
+
+    async def set_quiet_mode(
+        self, mode: QuietMode
+    ) -> None:
+        await self._client.post_set_quiet_mode(self.long_id, mode)

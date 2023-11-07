@@ -81,6 +81,15 @@ class DeviceDirection(IntEnum):
     WATER = 2
 
 
+class QuietMode(IntEnum):
+    """Quiet mode level"""
+
+    OFF = 0
+    LEVEL1 = 1
+    LEVEL2 = 2
+    LEVEL3 = 3
+
+
 @dataclass
 class TankStatus:
     """Tank status"""
@@ -505,4 +514,12 @@ class Device(ABC):
         """Set the temperature of the zone provided for the current device mode (heat/cool).
         :param temperature: The temperature to set
         :param zone_id: The zone id to set the temperature for
+        """
+
+    @abstractmethod
+    async def set_quiet_mode(
+        self, mode: QuietMode
+    ) -> None:
+        """Set the quiet mode.
+        :param mode: Quiet mode to set
         """
