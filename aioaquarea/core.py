@@ -518,7 +518,7 @@ class Client:
             "status": [
                 {
                     "deviceGuid": long_id,
-                    "quietMode": int(mode),
+                    "quietMode": mode.value
                 }
             ]
         }
