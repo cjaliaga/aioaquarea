@@ -27,6 +27,7 @@ from .data import (
     FaultError,
     OperationMode,
     OperationStatus,
+    QuietMode,
     SensorMode,
     Tank,
     TankStatus,
@@ -330,6 +331,7 @@ class Client:
                 )
                 for zone_status in device.get("zoneStatus", [])
             ],
+            QuietMode(device.get("quietMode", 0))
         )
 
         return device_status

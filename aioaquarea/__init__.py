@@ -11,6 +11,7 @@ from .data import (
     DeviceStatus,
     ExtendedOperationMode,
     OperationStatus,
+    QuietMode,
     Tank,
     UpdateOperationMode,
 )
@@ -37,4 +38,5 @@ __all__: Tuple[str, ...] = (
     "OperationStatus",
     "ExtendedOperationMode",
     "UpdateOperationMode",
+    "QuietMode"
 )

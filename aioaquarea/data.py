@@ -162,6 +162,7 @@ class DeviceStatus:
     pump_duty: int
     tank_status: list[TankStatus]
     zones: list[DeviceZoneStatus]
+    quiet_mode: QuietMode
 
 
 @dataclass
@@ -470,6 +471,11 @@ class Device(ABC):
     def zones(self) -> dict[int, DeviceZone]:
         """The zones of the device"""
         return self._zones
+
+    @property
+    def quiet_mode(self) -> QuietMode:
+        """The quiet mode of the device"""
+        return self._status.quiet_mode
 
     def support_cooling(self, zone_id: int = 1) -> bool:
         """True if the device supports cooling in the given zone"""
