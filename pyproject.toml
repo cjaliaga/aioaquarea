@@ -32,7 +32,7 @@ dependencies = [
 "Bug Tracker" = "https://github.com/cjaliaga/aioaquarea/issues"
 
 [tool.black]
-target-version = ["py39", "py310"]
+target-version = ["py39", "py310", "py311"]
 
 [tool.isort]
 # https://github.com/PyCQA/isort/wiki/isort-Settings
