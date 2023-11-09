@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 import asyncio
-from datetime import datetime, timezone
+from datetime import date, datetime, timezone
 import functools
 import logging
 from typing import List, Optional
@@ -13,6 +13,7 @@ import aiohttp
 from .const import (
     AQUAREA_SERVICE_A2W_STATUS_DISPLAY,
     AQUAREA_SERVICE_BASE,
+    AQUAREA_SERVICE_CONSUMPTION,
     AQUAREA_SERVICE_CONTRACT,
     AQUAREA_SERVICE_DEVICES,
     AQUAREA_SERVICE_LOGIN,
@@ -35,6 +36,7 @@ from .data import (
     ZoneSensor,
 )
 from .errors import ApiError, AuthenticationError, AuthenticationErrorCodes, InvalidData
+from .statistics import Consumption, DateType
 
 
 def auth_required(fn):
@@ -532,6 +534,19 @@ class Client:
             content_type="application/json",
             json=data,
         )
+
+    async def get_device_consumption(
+        self, long_id: str, aggregation: DateType, date_input: str
+    ) -> Consumption:
+        """Get device consumption"""
+        response = await self.request(
+            "GET",
+            f"{AQUAREA_SERVICE_CONSUMPTION}/{long_id}?{aggregation}={date_input}",
+            referer=AQUAREA_SERVICE_A2W_STATUS_DISPLAY,
+        )
+
+        date_data = await response.json()
+        return Consumption(date_data.get("dateData")[0])
 
 
 class TankImpl(Tank):

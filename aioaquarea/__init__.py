@@ -22,6 +22,7 @@ from .errors import (
     ClientError,
     RequestFailedError,
 )
+from .statistics import Consumption, DateType
 
 __all__: Tuple[str, ...] = (
     "Client",
@@ -39,4 +40,6 @@ __all__: Tuple[str, ...] = (
     "ExtendedOperationMode",
     "UpdateOperationMode",
     "QuietMode"
+    "DateType",
+    "Consumption",
 )
