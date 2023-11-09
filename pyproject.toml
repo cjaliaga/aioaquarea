@@ -9,7 +9,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "aioaquarea"
-version = "0.3.7"
+version = "0.3.8"
 authors = [
   { name="Carlos J. Aliaga", email="dev@cjaliaga.net" },
 ]
@@ -32,7 +32,7 @@ dependencies = [
 "Bug Tracker" = "https://github.com/cjaliaga/aioaquarea/issues"
 
 [tool.black]
-target-version = ["py39", "py310"]
+target-version = ["py39", "py310", "py311"]
 
 [tool.isort]
 # https://github.com/PyCQA/isort/wiki/isort-Settings
