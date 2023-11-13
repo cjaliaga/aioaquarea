@@ -535,6 +535,28 @@ class Client:
             json=data,
         )
 
+    @auth_required
+    async def post_set_powerful_time(
+        self, long_id: str, powerful_time: PowerfullTime
+    ) -> None:
+        """Post powerful time"""
+        data = {
+            "status": [
+                {
+                    "deviceGuid": long_id,
+                    "powerfulRequest": int(powerful_time),
+                }
+            ]
+        }
+
+        response = await self.request(
+            "POST",
+            f"{AQUAREA_SERVICE_DEVICES}/{long_id}",
+            referer=AQUAREA_SERVICE_A2W_STATUS_DISPLAY,
+            content_type="application/json",
+            json=data,
+        )
+
     async def get_device_consumption(
         self, long_id: str, aggregation: DateType, date_input: str
     ) -> Consumption:
@@ -642,3 +664,8 @@ class DeviceImpl(Device):
         self, mode: QuietMode
     ) -> None:
         await self._client.post_set_quiet_mode(self.long_id, mode)
+
+    async def set_powerful_time(
+        self, powerful_time: PowerfullTime
+    ) -> None:
+        await self._client.post_set_powerful_time(self.long_id, powerful_time)

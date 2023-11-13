@@ -14,6 +14,8 @@ from .data import (
     QuietMode,
     Tank,
     UpdateOperationMode,
+    QuietMode,
+    PowerfullTime,
 )
 from .errors import (
     ApiError,

@@ -90,6 +90,15 @@ class QuietMode(IntEnum):
     LEVEL3 = 3
 
 
+class PowerfullTime(IntEnum):
+    """Powerful time"""
+
+    OFF = 0
+    ON_30MIN = 1
+    ON_60MIN = 2
+    ON_90MIN = 3
+
+
 @dataclass
 class TankStatus:
     """Tank status"""
@@ -528,4 +537,12 @@ class Device(ABC):
     ) -> None:
         """Set the quiet mode.
         :param mode: Quiet mode to set
+        """
+
+    @abstractmethod
+    async def set_powerful_time(
+        self, powerful_time: PowerfullTime
+    ) -> None:
+        """Set the powerful time.
+        :param powerful_time: Time to enable powerful mode
         """
