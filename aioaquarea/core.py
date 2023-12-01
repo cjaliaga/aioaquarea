@@ -35,7 +35,13 @@ from .data import (
     UpdateOperationMode,
     ZoneSensor,
 )
-from .errors import ApiError, AuthenticationError, AuthenticationErrorCodes, DataNotAvailableError, InvalidData
+from .errors import (
+    ApiError,
+    AuthenticationError,
+    AuthenticationErrorCodes,
+    DataNotAvailableError,
+    InvalidData,
+)
 from .statistics import Consumption, DataType, DateType
 
 
@@ -92,7 +98,6 @@ class Client:
         refresh_login: bool = True,
         logger: Optional[logging.Logger] = None,
     ):
-
         self._login_lock = asyncio.Lock()
         self._sess = session
         self._username = username
@@ -333,14 +338,18 @@ class Client:
                 )
                 for zone_status in device.get("zoneStatus", [])
             ],
-            QuietMode(device.get("quietMode", 0))
+            QuietMode(device.get("quietMode", 0)),
         )
 
         return device_status
 
     @auth_required
     async def get_device(
-        self, device_info: DeviceInfo | None = None, device_id: str | None = None, consumption_refresh_interval: Optional[dt.timedelta] = None, timezone: dt.timezone = dt.timezone.utc
+        self,
+        device_info: DeviceInfo | None = None,
+        device_id: str | None = None,
+        consumption_refresh_interval: Optional[dt.timedelta] = None,
+        timezone: dt.timezone = dt.timezone.utc,
     ) -> Device:
         """Retrieves device"""
         if not device_info and not device_id:
@@ -353,7 +362,11 @@ class Client:
             )
 
         return DeviceImpl(
-            device_info, await self.get_device_status(device_info.long_id), self, consumption_refresh_interval, timezone
+            device_info,
+            await self.get_device_status(device_info.long_id),
+            self,
+            consumption_refresh_interval,
+            timezone,
         )
 
     @auth_required
@@ -514,9 +527,7 @@ class Client:
         )
 
     @auth_required
-    async def post_set_quiet_mode(
-        self, long_id: str, mode: QuietMode
-    ) -> None:
+    async def post_set_quiet_mode(self, long_id: str, mode: QuietMode) -> None:
         """Post quiet mode"""
         data = {
             "status": [
@@ -572,7 +583,14 @@ class TankImpl(Tank):
 class DeviceImpl(Device):
     """Device implementation able to auto-refresh using the Aquarea Client"""
 
-    def __init__(self, info: DeviceInfo, status: DeviceStatus, client: Client, consumption_refresh_interval: Optional[dt.timedelta] = None, timezone: dt.timezone = dt.timezone.utc) -> None:
+    def __init__(
+        self,
+        info: DeviceInfo,
+        status: DeviceStatus,
+        client: Client,
+        consumption_refresh_interval: Optional[dt.timedelta] = None,
+        timezone: dt.timezone = dt.timezone.utc,
+    ) -> None:
         super().__init__(info, status)
         self._client = client
         self._timezone = timezone
@@ -605,12 +623,20 @@ class DeviceImpl(Device):
         await self._consumption_refresh_lock.acquire()
 
         try:
-            if self._consumption_refresh_interval is not None and self._last_consumption_refresh is not None and dt.datetime.now(self._timezone) - self._last_consumption_refresh < self._consumption_refresh_interval:
+            if (
+                self._consumption_refresh_interval is not None
+                and self._last_consumption_refresh is not None
+                and dt.datetime.now(self._timezone) - self._last_consumption_refresh
+                < self._consumption_refresh_interval
+            ):
                 return
 
             now = dt.datetime.now(self._timezone)
             for date in self._consumption:
-                if now - date > dt.timedelta(days=2) and self._consumption.get(date) is not None:
+                if (
+                    now - date > dt.timedelta(days=2)
+                    and self._consumption.get(date) is not None
+                ):
                     continue
 
                 self._consumption[date] = await self._client.get_device_consumption(
@@ -620,7 +646,6 @@ class DeviceImpl(Device):
             self._last_consumption_refresh = dt.datetime.now(self._timezone)
         finally:
             self._consumption_refresh_lock.release()
-
 
     async def __set_operation_status__(self, status: OperationStatus) -> None:
         await self._client.post_device_operation_status(self.long_id, status)
@@ -673,29 +698,36 @@ class DeviceImpl(Device):
                 self.long_id, zone_id, temperature
             )
 
-    async def set_quiet_mode(
-        self, mode: QuietMode
-    ) -> None:
+    async def set_quiet_mode(self, mode: QuietMode) -> None:
         await self._client.post_set_quiet_mode(self.long_id, mode)
 
-    async def get_consumption(self, date: dt.datetime, consumption_type: DataType, force_retrieval: bool = False) ->  float | None:
-        """Gets the consumption for the given date. If asking for current hour, the consumption might not be complete yet.
-        :param date: The date to get the consumption for (minutes and seconds will be ignored)
-        :param consumption_type: The consumption type to get
-        :param force_retrieval: If true, the consumption will be retrieved from the Aquarea API. If false, it will be retrieved on the next refresh
-        :return: The consumption for the given date or None if we have retrived the consumption for the given date but it's not available yet"""
+    async def get_and_refresh_consumption(
+        self, date: datetime, consumption_type: DataType
+    ) -> float | None:
+        """Retrieves consumption data and asyncronously refreshes if necessary for the specified date and type.
+        :param date: The date to get the consumption for
+        :param consumption_type: The consumption type to get"""
 
         day = date.replace(hour=0, minute=0, second=0, microsecond=0)
-        consumption = self._consumption.get(day)
-        if force_retrieval:
-            self._consumption[day] = await self._client.get_device_consumption(
-                self.long_id, DateType.DAY, day.strftime("%Y-%m-%d")
-            )
-            consumption = self._consumption.get(day)
+
+        self._consumption[day] = await self._client.get_device_consumption(
+            self.long_id, DateType.DAY, day.strftime("%Y-%m-%d")
+        )
+
+        return self._consumption[day].energy.get(consumption_type)[date.hour]
+
+    def get_or_schedule_consumption(
+        self, date: datetime, consumption_type: DataType
+    ) -> float | None:
+        """Gets available consumption data or schedules retrieval for the next refresh cycle.
+        :param date: The date to get the consumption for
+        :param consumption_type: The consumption type to get"""
+
+        day = date.replace(hour=0, minute=0, second=0, microsecond=0)
+        consumption = self._consumption.get(day, None)
 
         if consumption is None:
             self._consumption[day] = None
             raise DataNotAvailableError(f"Consumption for {day} is not yet available")
 
         return consumption.energy.get(consumption_type)[date.hour]
-

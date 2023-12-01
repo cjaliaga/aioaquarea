@@ -535,11 +535,17 @@ class Device(ABC):
         """
 
     @abstractmethod
-    async def get_consumption(self, date: datetime, consumption_type: DataType, force_retrieval: bool = False) ->  float | None:
-        """Gets the consumption for the given date and type
+    async def get_and_refresh_consumption(self, date: datetime, consumption_type: DataType) ->  float | None:
+        """Retrieves consumption data and asyncronously refreshes if necessary for the specified date and type.
         :param date: The date to get the consumption for
-        :param consumption_type: The consumption type to get
-        :param force_retrieval: If true, the consumption will be retrieved from the Aquarea API. If false, it will be retrieved on the next refresh"""
+        :param consumption_type: The consumption type to get"""
+
+
+   @abstractmethod
+    def get_or_schedule_consumption(self, date: datetime, consumption_type: DataType) ->  float | None:
+        """Gets available consumption data or schedules retrieval for the next refresh cycle.
+        :param date: The date to get the consumption for
+        :param consumption_type: The consumption type to get"""
 
 class LimitedSizeDict(OrderedDict):
     def __init__(self, max_keys: int, *args, **kwds):
