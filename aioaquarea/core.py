@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 import asyncio
-from datetime import date, datetime, timezone
+import datetime as dt
 import functools
 import logging
 from typing import List, Optional
@@ -35,8 +35,8 @@ from .data import (
     UpdateOperationMode,
     ZoneSensor,
 )
-from .errors import ApiError, AuthenticationError, AuthenticationErrorCodes, InvalidData
-from .statistics import Consumption, DateType
+from .errors import ApiError, AuthenticationError, AuthenticationErrorCodes, DataNotAvailableError, InvalidData
+from .statistics import Consumption, DataType, DateType
 
 
 def auth_required(fn):
@@ -99,8 +99,8 @@ class Client:
         self._password = password
         self._refresh_login = refresh_login
         self._logger = logger or logging.getLogger("aioaquarea")
-        self._token_expiration: Optional[datetime] = None
-        self._last_login: datetime = datetime.min
+        self._token_expiration: Optional[dt.datetime] = None
+        self._last_login: dt.datetime = dt.datetime.min
 
     @property
     def username(self) -> str:
@@ -118,7 +118,7 @@ class Client:
         return self._refresh_login
 
     @property
-    def token_expiration(self) -> Optional[datetime]:
+    def token_expiration(self) -> Optional[dt.datetime]:
         """Return the expiration date of the token"""
         return self._token_expiration
 
@@ -128,7 +128,7 @@ class Client:
         if not self._token_expiration:
             return False
 
-        now = datetime.astimezone(datetime.utcnow(), tz=timezone.utc)
+        now = dt.datetime.astimezone(dt.datetime.utcnow(), tz=dt.timezone.utc)
         return now < self._token_expiration
 
     @property
@@ -189,7 +189,7 @@ class Client:
 
     async def login(self) -> None:
         """Login to Aquarea and stores a token in the session"""
-        intent = datetime.now()
+        intent = dt.datetime.now()
         await self._login_lock.acquire()
         try:
             if self._last_login > intent:
@@ -213,7 +213,7 @@ class Client:
             if not isinstance(data, dict):
                 raise InvalidData(data)
 
-            self._token_expiration = datetime.strptime(
+            self._token_expiration = dt.datetime.strptime(
                 data["accessToken"]["expires"], "%Y-%m-%dT%H:%M:%S%z"
             )
 
@@ -221,7 +221,7 @@ class Client:
                 f"Login successful for {self.username}. Access Token Expiration: {self._token_expiration}"
             )
 
-            self._last_login = datetime.now()
+            self._last_login = dt.datetime.now()
 
         finally:
             self._login_lock.release()
@@ -340,7 +340,7 @@ class Client:
 
     @auth_required
     async def get_device(
-        self, device_info: DeviceInfo | None = None, device_id: str | None = None
+        self, device_info: DeviceInfo | None = None, device_id: str | None = None, consumption_refresh_interval: Optional[dt.timedelta] = None, timezone: dt.timezone = dt.timezone.utc
     ) -> Device:
         """Retrieves device"""
         if not device_info and not device_id:
@@ -353,7 +353,7 @@ class Client:
             )
 
         return DeviceImpl(
-            device_info, await self.get_device_status(device_info.long_id), self
+            device_info, await self.get_device_status(device_info.long_id), self, consumption_refresh_interval, timezone
         )
 
     @auth_required
@@ -572,9 +572,13 @@ class TankImpl(Tank):
 class DeviceImpl(Device):
     """Device implementation able to auto-refresh using the Aquarea Client"""
 
-    def __init__(self, info: DeviceInfo, status: DeviceStatus, client: Client) -> None:
+    def __init__(self, info: DeviceInfo, status: DeviceStatus, client: Client, consumption_refresh_interval: Optional[dt.timedelta] = None, timezone: dt.timezone = dt.timezone.utc) -> None:
         super().__init__(info, status)
         self._client = client
+        self._timezone = timezone
+        self._last_consumption_refresh: dt.datetime | None = None
+        self._consumption_refresh_lock = asyncio.Lock()
+        self._consumption_refresh_interval = consumption_refresh_interval
 
         if self.has_tank:
             self._tank = TankImpl(self._status.tank_status[0], self, self._client)
@@ -586,6 +590,37 @@ class DeviceImpl(Device):
             self._tank = TankImpl(self._status.tank_status[0], self, self._client)
 
         self.__build_zones__()
+
+        if self._consumption:
+            await self.__refresh_consumption__()
+
+    async def __refresh_consumption__(self) -> None:
+        """Refreshes the consumption data"""
+        if not self._consumption:
+            return
+
+        if self._consumption_refresh_lock.locked():
+            return
+
+        await self._consumption_refresh_lock.acquire()
+
+        try:
+            if self._consumption_refresh_interval is not None and self._last_consumption_refresh is not None and dt.datetime.now(self._timezone) - self._last_consumption_refresh < self._consumption_refresh_interval:
+                return
+
+            now = dt.datetime.now(self._timezone)
+            for date in self._consumption:
+                if now - date > dt.timedelta(days=2) and self._consumption.get(date) is not None:
+                    continue
+
+                self._consumption[date] = await self._client.get_device_consumption(
+                    self.long_id, DateType.DAY, date.strftime("%Y-%m-%d")
+                )
+
+            self._last_consumption_refresh = dt.datetime.now(self._timezone)
+        finally:
+            self._consumption_refresh_lock.release()
+
 
     async def __set_operation_status__(self, status: OperationStatus) -> None:
         await self._client.post_device_operation_status(self.long_id, status)
@@ -642,3 +677,25 @@ class DeviceImpl(Device):
         self, mode: QuietMode
     ) -> None:
         await self._client.post_set_quiet_mode(self.long_id, mode)
+
+    async def get_consumption(self, date: dt.datetime, consumption_type: DataType, force_retrieval: bool = False) ->  float | None:
+        """Gets the consumption for the given date. If asking for current hour, the consumption might not be complete yet.
+        :param date: The date to get the consumption for (minutes and seconds will be ignored)
+        :param consumption_type: The consumption type to get
+        :param force_retrieval: If true, the consumption will be retrieved from the Aquarea API. If false, it will be retrieved on the next refresh
+        :return: The consumption for the given date or None if we have retrived the consumption for the given date but it's not available yet"""
+
+        day = date.replace(hour=0, minute=0, second=0, microsecond=0)
+        consumption = self._consumption.get(day)
+        if force_retrieval:
+            self._consumption[day] = await self._client.get_device_consumption(
+                self.long_id, DateType.DAY, day.strftime("%Y-%m-%d")
+            )
+            consumption = self._consumption.get(day)
+
+        if consumption is None:
+            self._consumption[day] = None
+            raise DataNotAvailableError(f"Consumption for {day} is not yet available")
+
+        return consumption.energy.get(consumption_type)[date.hour]
+

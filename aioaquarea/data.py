@@ -4,8 +4,11 @@ from __future__ import annotations
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from enum import IntEnum
+from collections import OrderedDict
+from datetime import datetime
 
 from .const import PANASONIC
+from .statistics import Consumption, DataType
 
 try:
     from enum import StrEnum
@@ -352,6 +355,7 @@ class Device(ABC):
         self._info = info
         self._status = status
         self._tank: Tank | None = None
+        self._consumption: dict[datetime, Consumption] = LimitedSizeDict(5)
         self.__build_zones__()
 
     def __build_zones__(self) -> None:
@@ -529,3 +533,26 @@ class Device(ABC):
         """Set the quiet mode.
         :param mode: Quiet mode to set
         """
+
+    @abstractmethod
+    async def get_consumption(self, date: datetime, consumption_type: DataType, force_retrieval: bool = False) ->  float | None:
+        """Gets the consumption for the given date and type
+        :param date: The date to get the consumption for
+        :param consumption_type: The consumption type to get
+        :param force_retrieval: If true, the consumption will be retrieved from the Aquarea API. If false, it will be retrieved on the next refresh"""
+
+class LimitedSizeDict(OrderedDict):
+    def __init__(self, max_keys: int, *args, **kwds):
+        self.size_limit = max_keys
+        OrderedDict.__init__(self, *args, **kwds)
+        self._check_size_limit()
+
+    def __setitem__(self, key, value):
+        OrderedDict.__setitem__(self, key, value)
+        self._check_size_limit()
+
+    def _check_size_limit(self):
+        if self.size_limit is not None:
+            while len(self) > self.size_limit:
+                self.popitem(last=False)
+
