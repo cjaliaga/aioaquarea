@@ -628,6 +628,7 @@ class DeviceImpl(Device):
                 and self._last_consumption_refresh is not None
                 and dt.datetime.now(self._timezone) - self._last_consumption_refresh
                 < self._consumption_refresh_interval
+                and None not in self._consumption.values()
             ):
                 return
 
@@ -702,7 +703,7 @@ class DeviceImpl(Device):
         await self._client.post_set_quiet_mode(self.long_id, mode)
 
     async def get_and_refresh_consumption(
-        self, date: datetime, consumption_type: DataType
+        self, date: dt.datetime, consumption_type: DataType
     ) -> float | None:
         """Retrieves consumption data and asyncronously refreshes if necessary for the specified date and type.
         :param date: The date to get the consumption for
@@ -717,7 +718,7 @@ class DeviceImpl(Device):
         return self._consumption[day].energy.get(consumption_type)[date.hour]
 
     def get_or_schedule_consumption(
-        self, date: datetime, consumption_type: DataType
+        self, date: dt.datetime, consumption_type: DataType
     ) -> float | None:
         """Gets available consumption data or schedules retrieval for the next refresh cycle.
         :param date: The date to get the consumption for
