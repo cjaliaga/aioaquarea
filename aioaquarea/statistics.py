@@ -1,8 +1,6 @@
 """Statistics models for Aquarea"""
 from __future__ import annotations
 
-from dataclasses import dataclass
-
 try:
     from enum import StrEnum
 except ImportError:
@@ -26,7 +24,7 @@ class AggregationType(StrEnum):
     MONTHLY = "monthly"
 
 
-class DataType(StrEnum):
+class ConsumptionType(StrEnum):
     """Data type"""
 
     HEAT = "Heat"
@@ -74,7 +72,7 @@ class Consumption:
         self._aggregation = AggregationType(date_data.get("timeline", {}).get("type"))
 
     @property
-    def energy(self) -> dict[DataType, list[float | None]]:
+    def energy(self) -> dict[ConsumptionType, list[float | None]]:
         """Energy consumption in kWh"""
         return self._data.get(DataSetName.ENERGY)
 
@@ -84,7 +82,7 @@ class Consumption:
         return self._data.get(DataSetName.GENERATED)
 
     @property
-    def cost(self) -> dict[DataType, list[float]]:
+    def cost(self) -> dict[ConsumptionType, list[float]]:
         """Energy cost in configured currency"""
         return self._data.get(DataSetName.COST)
 

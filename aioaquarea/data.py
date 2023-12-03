@@ -4,8 +4,11 @@ from __future__ import annotations
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from enum import IntEnum
+from datetime import datetime
 
 from .const import PANASONIC
+from .statistics import Consumption, ConsumptionType
+from .util import LimitedSizeDict
 
 try:
     from enum import StrEnum
@@ -352,6 +355,7 @@ class Device(ABC):
         self._info = info
         self._status = status
         self._tank: Tank | None = None
+        self._consumption: dict[datetime, Consumption] = LimitedSizeDict(5)
         self.__build_zones__()
 
     def __build_zones__(self) -> None:
@@ -458,7 +462,6 @@ class Device(ABC):
 
         mode = self.mode
         if direction == DeviceDirection.PUMP and mode != ExtendedOperationMode.OFF:
-
             return (
                 DeviceAction.HEATING
                 if mode in (ExtendedOperationMode.HEAT, ExtendedOperationMode.AUTO_HEAT)
@@ -523,9 +526,23 @@ class Device(ABC):
         """
 
     @abstractmethod
-    async def set_quiet_mode(
-        self, mode: QuietMode
-    ) -> None:
+    async def set_quiet_mode(self, mode: QuietMode) -> None:
         """Set the quiet mode.
         :param mode: Quiet mode to set
         """
+
+    @abstractmethod
+    async def get_and_refresh_consumption(
+        self, date: datetime, consumption_type: ConsumptionType
+    ) -> float | None:
+        """Retrieves consumption data and asyncronously refreshes if necessary for the specified date and type.
+        :param date: The date to get the consumption for
+        :param consumption_type: The consumption type to get"""
+
+    @abstractmethod
+    def get_or_schedule_consumption(
+        self, date: datetime, consumption_type: ConsumptionType
+    ) -> float | None:
+        """Gets available consumption data or schedules retrieval for the next refresh cycle.
+        :param date: The date to get the consumption for
+        :param consumption_type: The consumption type to get"""

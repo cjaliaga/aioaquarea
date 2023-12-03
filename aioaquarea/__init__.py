@@ -20,9 +20,10 @@ from .errors import (
     AuthenticationError,
     AuthenticationErrorCodes,
     ClientError,
+    DataNotAvailableError,
     RequestFailedError,
 )
-from .statistics import Consumption, DateType
+from .statistics import Consumption, ConsumptionType, DateType
 
 __all__: Tuple[str, ...] = (
     "Client",
@@ -39,7 +40,9 @@ __all__: Tuple[str, ...] = (
     "OperationStatus",
     "ExtendedOperationMode",
     "UpdateOperationMode",
-    "QuietMode"
+    "QuietMode",
     "DateType",
     "Consumption",
+    "ConsumptionType",
+    "DataNotAvailableError",
 )
