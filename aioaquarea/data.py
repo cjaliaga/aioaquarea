@@ -4,11 +4,11 @@ from __future__ import annotations
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from enum import IntEnum
-from collections import OrderedDict
 from datetime import datetime
 
 from .const import PANASONIC
-from .statistics import Consumption, DataType
+from .statistics import Consumption, ConsumptionType
+from .util import LimitedSizeDict
 
 try:
     from enum import StrEnum
@@ -462,7 +462,6 @@ class Device(ABC):
 
         mode = self.mode
         if direction == DeviceDirection.PUMP and mode != ExtendedOperationMode.OFF:
-
             return (
                 DeviceAction.HEATING
                 if mode in (ExtendedOperationMode.HEAT, ExtendedOperationMode.AUTO_HEAT)
@@ -527,38 +526,23 @@ class Device(ABC):
         """
 
     @abstractmethod
-    async def set_quiet_mode(
-        self, mode: QuietMode
-    ) -> None:
+    async def set_quiet_mode(self, mode: QuietMode) -> None:
         """Set the quiet mode.
         :param mode: Quiet mode to set
         """
 
     @abstractmethod
-    async def get_and_refresh_consumption(self, date: datetime, consumption_type: DataType) ->  float | None:
+    async def get_and_refresh_consumption(
+        self, date: datetime, consumption_type: ConsumptionType
+    ) -> float | None:
         """Retrieves consumption data and asyncronously refreshes if necessary for the specified date and type.
         :param date: The date to get the consumption for
         :param consumption_type: The consumption type to get"""
 
-
-   @abstractmethod
-    def get_or_schedule_consumption(self, date: datetime, consumption_type: DataType) ->  float | None:
+    @abstractmethod
+    def get_or_schedule_consumption(
+        self, date: datetime, consumption_type: ConsumptionType
+    ) -> float | None:
         """Gets available consumption data or schedules retrieval for the next refresh cycle.
         :param date: The date to get the consumption for
         :param consumption_type: The consumption type to get"""
-
-class LimitedSizeDict(OrderedDict):
-    def __init__(self, max_keys: int, *args, **kwds):
-        self.size_limit = max_keys
-        OrderedDict.__init__(self, *args, **kwds)
-        self._check_size_limit()
-
-    def __setitem__(self, key, value):
-        OrderedDict.__setitem__(self, key, value)
-        self._check_size_limit()
-
-    def _check_size_limit(self):
-        if self.size_limit is not None:
-            while len(self) > self.size_limit:
-                self.popitem(last=False)
-

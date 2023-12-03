@@ -42,7 +42,7 @@ from .errors import (
     DataNotAvailableError,
     InvalidData,
 )
-from .statistics import Consumption, DataType, DateType
+from .statistics import Consumption, ConsumptionType, DateType
 
 
 def auth_required(fn):
@@ -529,14 +529,7 @@ class Client:
     @auth_required
     async def post_set_quiet_mode(self, long_id: str, mode: QuietMode) -> None:
         """Post quiet mode"""
-        data = {
-            "status": [
-                {
-                    "deviceGuid": long_id,
-                    "quietMode": mode.value
-                }
-            ]
-        }
+        data = {"status": [{"deviceGuid": long_id, "quietMode": mode.value}]}
 
         response = await self.request(
             "POST",
@@ -703,7 +696,7 @@ class DeviceImpl(Device):
         await self._client.post_set_quiet_mode(self.long_id, mode)
 
     async def get_and_refresh_consumption(
-        self, date: dt.datetime, consumption_type: DataType
+        self, date: dt.datetime, consumption_type: ConsumptionType
     ) -> float | None:
         """Retrieves consumption data and asyncronously refreshes if necessary for the specified date and type.
         :param date: The date to get the consumption for
@@ -718,7 +711,7 @@ class DeviceImpl(Device):
         return self._consumption[day].energy.get(consumption_type)[date.hour]
 
     def get_or_schedule_consumption(
-        self, date: dt.datetime, consumption_type: DataType
+        self, date: dt.datetime, consumption_type: ConsumptionType
     ) -> float | None:
         """Gets available consumption data or schedules retrieval for the next refresh cycle.
         :param date: The date to get the consumption for
