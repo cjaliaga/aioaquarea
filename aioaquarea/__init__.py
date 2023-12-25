@@ -12,6 +12,7 @@ from .data import (
     ExtendedOperationMode,
     OperationStatus,
     QuietMode,
+    ForceDHW,
     Tank,
     UpdateOperationMode,
 )
@@ -41,6 +42,7 @@ __all__: Tuple[str, ...] = (
     "ExtendedOperationMode",
     "UpdateOperationMode",
     "QuietMode",
+    "ForceDHW",
     "DateType",
     "Consumption",
     "ConsumptionType",
