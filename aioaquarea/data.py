@@ -560,5 +560,5 @@ class Device(ABC):
     @abstractmethod
     async def set_force_dhw(self, force_dhw: ForceDHW) -> None:
         """Set the force dhw.
-        :param force_dhw: Set the Force DHW mode
+        :param force_dhw: Set the Force DHW mode if the device has a tank.
         """
