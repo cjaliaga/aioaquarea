@@ -26,6 +26,7 @@ from .data import (
     DeviceZoneStatus,
     ExtendedOperationMode,
     FaultError,
+    ForceDHW,
     OperationMode,
     OperationStatus,
     QuietMode,
@@ -339,6 +340,7 @@ class Client:
                 for zone_status in device.get("zoneStatus", [])
             ],
             QuietMode(device.get("quietMode", 0)),
+            ForceDHW(device.get("forceDHW", 0)),
         )
 
         return device_status
@@ -539,6 +541,19 @@ class Client:
             json=data,
         )
 
+    @auth_required
+    async def post_force_dhw(self, long_id: str, force_dhw: ForceDHW) -> None:
+        """Post quiet mode"""
+        data = {"status": [{"deviceGuid": long_id, "forceDHW": force_dhw.value}]}
+
+        response = await self.request(
+            "POST",
+            f"{AQUAREA_SERVICE_DEVICES}/{long_id}",
+            referer=AQUAREA_SERVICE_A2W_STATUS_DISPLAY,
+            content_type="application/json",
+            json=data,
+        )        
+
     async def get_device_consumption(
         self, long_id: str, aggregation: DateType, date_input: str
     ) -> Consumption:
@@ -725,3 +740,12 @@ class DeviceImpl(Device):
             raise DataNotAvailableError(f"Consumption for {day} is not yet available")
 
         return consumption.energy.get(consumption_type)[date.hour]
+
+    async def set_force_dhw(self, force_dhw: ForceDHW) -> None:
+        """Set the force dhw.
+        :param force_dhw: Set the Force DHW mode if the device has a tank.
+        """
+        if not self.has_tank:
+            return
+            
+        await self._client.post_force_dhw(self.long_id, force_dhw)        

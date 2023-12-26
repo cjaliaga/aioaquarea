@@ -92,6 +92,10 @@ class QuietMode(IntEnum):
     LEVEL2 = 2
     LEVEL3 = 3
 
+class ForceDHW(IntEnum):
+    """Force DHW"""
+    OFF = 0
+    ON = 1
 
 @dataclass
 class TankStatus:
@@ -166,6 +170,7 @@ class DeviceStatus:
     tank_status: list[TankStatus]
     zones: list[DeviceZoneStatus]
     quiet_mode: QuietMode
+    force_dhw: ForceDHW
 
 
 @dataclass
@@ -480,6 +485,11 @@ class Device(ABC):
         """The quiet mode of the device"""
         return self._status.quiet_mode
 
+    @property
+    def force_dhw(self) -> ForceDHW:
+        """The force DHW of the device"""
+        return self._status.force_dhw
+
     def support_cooling(self, zone_id: int = 1) -> bool:
         """True if the device supports cooling in the given zone"""
         zone = self.zones.get(zone_id, None)
@@ -546,3 +556,9 @@ class Device(ABC):
         """Gets available consumption data or schedules retrieval for the next refresh cycle.
         :param date: The date to get the consumption for
         :param consumption_type: The consumption type to get"""
+
+    @abstractmethod
+    async def set_force_dhw(self, force_dhw: ForceDHW) -> None:
+        """Set the force dhw.
+        :param force_dhw: Set the Force DHW mode if the device has a tank.
+        """
