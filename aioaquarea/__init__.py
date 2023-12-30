@@ -9,6 +9,7 @@ from .data import (
     DeviceAction,
     DeviceInfo,
     DeviceStatus,
+    DeviceModeStatus,
     ExtendedOperationMode,
     OperationStatus,
     QuietMode,
@@ -47,4 +48,5 @@ __all__: Tuple[str, ...] = (
     "Consumption",
     "ConsumptionType",
     "DataNotAvailableError",
+    "DeviceModeStatus",
 )

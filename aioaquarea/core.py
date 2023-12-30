@@ -21,6 +21,7 @@ from .const import (
 from .data import (
     Device,
     DeviceInfo,
+    DeviceModeStatus,
     DeviceStatus,
     DeviceZoneInfo,
     DeviceZoneStatus,
@@ -304,7 +305,7 @@ class Client:
         device_status = DeviceStatus(
             long_id,
             OperationStatus(device.get("operationStatus")),
-            OperationStatus(device.get("deiceStatus")),
+            DeviceModeStatus(device.get("deiceStatus")),
             device.get("outdoorNow"),
             ExtendedOperationMode.OFF
             if operation_mode_value == 99
@@ -552,6 +553,19 @@ class Client:
             referer=AQUAREA_SERVICE_A2W_STATUS_DISPLAY,
             content_type="application/json",
             json=data,
+        )
+
+    @auth_required
+    async def post_request_defrost(self, long_id: str) -> None:
+        """Post quiet mode"""
+        data = {"status": [{"deviceGuid": long_id, "forcedefrost": 1}]}
+
+        response = await self.request(
+            "POST",
+            f"{AQUAREA_SERVICE_DEVICES}/{long_id}",
+            referer=AQUAREA_SERVICE_A2W_STATUS_DISPLAY,
+            content_type="application/json",
+            json=data,
         )        
 
     async def get_device_consumption(
@@ -748,4 +762,9 @@ class DeviceImpl(Device):
         if not self.has_tank:
             return
             
-        await self._client.post_force_dhw(self.long_id, force_dhw)        
+        await self._client.post_force_dhw(self.long_id, force_dhw)
+
+    async def request_defrost(self) -> None:
+        """Request defrost"""
+        if self.device_mode_status is not DeviceModeStatus.DEFROST:
+            await self._client.post_request_defrost(self.long_id)

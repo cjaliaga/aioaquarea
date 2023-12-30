@@ -97,6 +97,12 @@ class ForceDHW(IntEnum):
     OFF = 0
     ON = 1
 
+class DeviceModeStatus(IntEnum):
+    """Device mode status"""
+
+    NORMAL = 0
+    DEFROST = 1
+
 @dataclass
 class TankStatus:
     """Tank status"""
@@ -161,7 +167,7 @@ class DeviceStatus:
 
     long_id: str
     operation_status: OperationStatus
-    device_status: OperationStatus
+    device_status: DeviceModeStatus
     temperature_outdoor: int
     operation_mode: ExtendedOperationMode
     fault_status: list[FaultError]
@@ -490,6 +496,11 @@ class Device(ABC):
         """The force DHW of the device"""
         return self._status.force_dhw
 
+    @property
+    def device_mode_status(self) -> DeviceModeStatus:
+        """The mode of the device"""
+        return self._status.device_status
+
     def support_cooling(self, zone_id: int = 1) -> bool:
         """True if the device supports cooling in the given zone"""
         zone = self.zones.get(zone_id, None)
@@ -562,3 +573,7 @@ class Device(ABC):
         """Set the force dhw.
         :param force_dhw: Set the Force DHW mode if the device has a tank.
         """
+
+    @abstractmethod
+    async def request_defrost(self) -> None:
+        """Request defrost"""
