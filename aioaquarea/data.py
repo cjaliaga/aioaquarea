@@ -97,6 +97,11 @@ class ForceDHW(IntEnum):
     OFF = 0
     ON = 1
 
+class ForceHeater(IntEnum):
+    """Force Heater"""
+    OFF = 0
+    ON = 1
+
 class DeviceModeStatus(IntEnum):
     """Device mode status"""
 
@@ -177,6 +182,7 @@ class DeviceStatus:
     zones: list[DeviceZoneStatus]
     quiet_mode: QuietMode
     force_dhw: ForceDHW
+    force_heater: ForceHeater
 
 
 @dataclass
@@ -497,6 +503,11 @@ class Device(ABC):
         return self._status.force_dhw
 
     @property
+    def force_heater(self) -> ForceHeater:
+        """The force heater of the device"""
+        return self._status.force_heater
+
+    @property
     def device_mode_status(self) -> DeviceModeStatus:
         """The mode of the device"""
         return self._status.device_status
@@ -572,6 +583,12 @@ class Device(ABC):
     async def set_force_dhw(self, force_dhw: ForceDHW) -> None:
         """Set the force dhw.
         :param force_dhw: Set the Force DHW mode if the device has a tank.
+        """
+
+    @abstractmethod
+    async def set_force_heater(self, force_heater: ForceHeater) -> None:
+        """Set the force heater configuration.
+        :param force_heater: The force heater mode.
         """
 
     @abstractmethod

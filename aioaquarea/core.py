@@ -28,6 +28,7 @@ from .data import (
     ExtendedOperationMode,
     FaultError,
     ForceDHW,
+    ForceHeater,
     OperationMode,
     OperationStatus,
     QuietMode,
@@ -342,6 +343,7 @@ class Client:
             ],
             QuietMode(device.get("quietMode", 0)),
             ForceDHW(device.get("forceDHW", 0)),
+            ForceHeater(device.get("forceHeater", 0)),
         )
 
         return device_status
@@ -530,7 +532,7 @@ class Client:
         )
 
     @auth_required
-    async def post_set_quiet_mode(self, long_id: str, mode: QuietMode) -> None:
+    async def post_device_set_quiet_mode(self, long_id: str, mode: QuietMode) -> None:
         """Post quiet mode"""
         data = {"status": [{"deviceGuid": long_id, "quietMode": mode.value}]}
 
@@ -543,7 +545,7 @@ class Client:
         )
 
     @auth_required
-    async def post_force_dhw(self, long_id: str, force_dhw: ForceDHW) -> None:
+    async def post_device_force_dhw(self, long_id: str, force_dhw: ForceDHW) -> None:
         """Post quiet mode"""
         data = {"status": [{"deviceGuid": long_id, "forceDHW": force_dhw.value}]}
 
@@ -556,7 +558,20 @@ class Client:
         )
 
     @auth_required
-    async def post_request_defrost(self, long_id: str) -> None:
+    async def post_device_force_heater(self, long_id: str, force_heater: ForceHeater) -> None:
+        """Post quiet mode"""
+        data = {"status": [{"deviceGuid": long_id, "forceHeater": force_heater.value}]}
+
+        response = await self.request(
+            "POST",
+            f"{AQUAREA_SERVICE_DEVICES}/{long_id}",
+            referer=AQUAREA_SERVICE_A2W_STATUS_DISPLAY,
+            content_type="application/json",
+            json=data,
+        )
+
+    @auth_required
+    async def post_device_request_defrost(self, long_id: str) -> None:
         """Post quiet mode"""
         data = {"status": [{"deviceGuid": long_id, "forcedefrost": 1}]}
 
@@ -566,7 +581,7 @@ class Client:
             referer=AQUAREA_SERVICE_A2W_STATUS_DISPLAY,
             content_type="application/json",
             json=data,
-        )        
+        )    
 
     async def get_device_consumption(
         self, long_id: str, aggregation: DateType, date_input: str
@@ -722,7 +737,7 @@ class DeviceImpl(Device):
             )
 
     async def set_quiet_mode(self, mode: QuietMode) -> None:
-        await self._client.post_set_quiet_mode(self.long_id, mode)
+        await self._client.post_device_set_quiet_mode(self.long_id, mode)
 
     async def get_and_refresh_consumption(
         self, date: dt.datetime, consumption_type: ConsumptionType
@@ -762,9 +777,16 @@ class DeviceImpl(Device):
         if not self.has_tank:
             return
             
-        await self._client.post_force_dhw(self.long_id, force_dhw)
+        await self._client.post_device_force_dhw(self.long_id, force_dhw)
+
+    async def set_force_heater(self, force_heater: ForceHeater) -> None:
+        """Set the force heater configuration.
+        :param force_heater: The force heater mode.
+        """
+        if self.force_heater is not force_heater:
+            await self._client.post_device_force_heater(self.long_id, force_heater)
 
     async def request_defrost(self) -> None:
         """Request defrost"""
         if self.device_mode_status is not DeviceModeStatus.DEFROST:
-            await self._client.post_request_defrost(self.long_id)
+            await self._client.post_device_request_defrost(self.long_id)
