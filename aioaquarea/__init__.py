@@ -14,6 +14,7 @@ from .data import (
     OperationStatus,
     QuietMode,
     ForceDHW,
+    ForceHeater,
     Tank,
     UpdateOperationMode,
 )
@@ -49,4 +50,5 @@ __all__: Tuple[str, ...] = (
     "ConsumptionType",
     "DataNotAvailableError",
     "DeviceModeStatus",
+    "ForceHeater",
 )
