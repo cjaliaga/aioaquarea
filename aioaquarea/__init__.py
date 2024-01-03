@@ -17,6 +17,7 @@ from .data import (
     ForceHeater,
     Tank,
     UpdateOperationMode,
+    HolidayTimer,
 )
 from .errors import (
     ApiError,
@@ -51,4 +52,5 @@ __all__: Tuple[str, ...] = (
     "DataNotAvailableError",
     "DeviceModeStatus",
     "ForceHeater",
+    "HolidayTimer",
 )
