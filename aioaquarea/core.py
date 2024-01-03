@@ -5,7 +5,7 @@ import asyncio
 import datetime as dt
 import functools
 import logging
-from typing import List, Optional
+from typing import Optional
 import urllib.parse
 
 import aiohttp
@@ -29,6 +29,7 @@ from .data import (
     FaultError,
     ForceDHW,
     ForceHeater,
+    HolidayTimer,
     OperationMode,
     OperationStatus,
     QuietMode,
@@ -82,7 +83,7 @@ def auth_required(fn):
 
 
 class Client:
-    """Aquarea Client"""
+    """Aquarea Client."""
 
     _HEADERS = {
         # "Content-Type": "application/x-www-form-urlencoded",
@@ -112,27 +113,27 @@ class Client:
 
     @property
     def username(self) -> str:
-        """The username used to login"""
+        """The username used to login."""
         return self._username
 
     @property
     def password(self) -> str:
-        """Return the password"""
+        """Return the password."""
         return self._password
 
     @property
     def is_refresh_login_enabled(self) -> bool:
-        """Return True if the client is allowed to refresh the login"""
+        """Return True if the client is allowed to refresh the login."""
         return self._refresh_login
 
     @property
     def token_expiration(self) -> Optional[dt.datetime]:
-        """Return the expiration date of the token"""
+        """Return the expiration date of the token."""
         return self._token_expiration
 
     @property
     def is_logged(self) -> bool:
-        """Return True if the user is logged in"""
+        """Return True if the user is logged in."""
         if not self._token_expiration:
             return False
 
@@ -141,7 +142,7 @@ class Client:
 
     @property
     def logger(self) -> logging.Logger:
-        """Return the logger"""
+        """Return the logger."""
         return self._logger
 
     async def request(
@@ -153,7 +154,7 @@ class Client:
         content_type: str = "application/x-www-form-urlencoded",
         **kwargs,
     ) -> aiohttp.ClientResponse:
-        """Make a request to Aquarea and return the response"""
+        """Make a request to Aquarea and return the response."""
 
         headers = self._HEADERS.copy()
         request_headers = kwargs.get("headers", {})
@@ -181,7 +182,7 @@ class Client:
     async def look_for_errors(
         self, response: aiohttp.ClientResponse
     ) -> list[FaultError]:
-        """Look for errors in the response and return them as a list of FaultError objects"""
+        """Look for errors in the response and return them as a list of FaultError objects."""
         if response.content_type != "application/json":
             return []
 
@@ -196,7 +197,7 @@ class Client:
         ]
 
     async def login(self) -> None:
-        """Login to Aquarea and stores a token in the session"""
+        """Login to Aquarea and stores a token in the session."""
         intent = dt.datetime.now()
         await self._login_lock.acquire()
         try:
@@ -235,7 +236,7 @@ class Client:
             self._login_lock.release()
 
     @auth_required
-    async def get_devices(self, include_long_id=False) -> List[DeviceInfo]:
+    async def get_devices(self, include_long_id=False) -> list[DeviceInfo]:
         """Get list of devices and its configuration, without status."""
         response = await self.request("GET", AQUAREA_SERVICE_DEVICES)
         data = await response.json()
@@ -243,7 +244,7 @@ class Client:
         if not isinstance(data, dict):
             raise InvalidData(data)
 
-        devices: List[DeviceInfo] = []
+        devices: list[DeviceInfo] = []
 
         for record in data["device"]:
             zones: list[DeviceZoneInfo] = []
@@ -282,7 +283,7 @@ class Client:
 
     @auth_required
     async def get_device_long_id(self, device_id: str) -> str:
-        """Retrives device long id to be used to retrive device status"""
+        """Retrives device long id to be used to retrive device status."""
         cookies = dict(selectedGwid=device_id)
         resp = await self.request(
             "POST",
@@ -294,7 +295,7 @@ class Client:
 
     @auth_required
     async def get_device_status(self, long_id: str) -> DeviceStatus:
-        """Retrives device status"""
+        """Retrives device status."""
         response = await self.request(
             "GET", f"{AQUAREA_SERVICE_DEVICES}/{long_id}?var.deviceDirect=1"
         )
@@ -304,20 +305,20 @@ class Client:
         operation_mode_value = device.get("operationMode")
 
         device_status = DeviceStatus(
-            long_id,
-            OperationStatus(device.get("operationStatus")),
-            DeviceModeStatus(device.get("deiceStatus")),
-            device.get("outdoorNow"),
-            ExtendedOperationMode.OFF
+            long_id=long_id,
+            operation_status=OperationStatus(device.get("operationStatus")),
+            device_status=DeviceModeStatus(device.get("deiceStatus")),
+            temperature_outdoor=device.get("outdoorNow"),
+            operation_mode=ExtendedOperationMode.OFF
             if operation_mode_value == 99
             else ExtendedOperationMode(operation_mode_value),
-            [
+            fault_status=[
                 FaultError(fault_status["errorMessage"], fault_status["errorCode"])
                 for fault_status in device.get("faultStatus", [])
             ],
-            device.get("direction"),
-            device.get("pumpDuty"),
-            [
+            direction=device.get("direction"),
+            pump_duty=device.get("pumpDuty"),
+            tank_status=[
                 TankStatus(
                     OperationStatus(tank_status["operationStatus"]),
                     tank_status["temparatureNow"],
@@ -327,7 +328,7 @@ class Client:
                 )
                 for tank_status in device.get("tankStatus", [])
             ],
-            [
+            zones=[
                 DeviceZoneStatus(
                     zone_status["zoneId"],
                     zone_status["temparatureNow"],
@@ -341,9 +342,10 @@ class Client:
                 )
                 for zone_status in device.get("zoneStatus", [])
             ],
-            QuietMode(device.get("quietMode", 0)),
-            ForceDHW(device.get("forceDHW", 0)),
-            ForceHeater(device.get("forceHeater", 0)),
+            quiet_mode=QuietMode(device.get("quietMode", 0)),
+            force_dhw=ForceDHW(device.get("forceDHW", 0)),
+            force_heater=ForceHeater(device.get("forceHeater", 0)),
+            holiday_timer=HolidayTimer(device.get("holidayTimer", 0)),
         )
 
         return device_status
@@ -356,7 +358,7 @@ class Client:
         consumption_refresh_interval: Optional[dt.timedelta] = None,
         timezone: dt.timezone = dt.timezone.utc,
     ) -> Device:
-        """Retrieves device"""
+        """Retrieve device."""
         if not device_info and not device_id:
             raise ValueError("Either device_info or device_id must be provided")
 
@@ -378,7 +380,7 @@ class Client:
     async def post_device_operation_status(
         self, long_device_id: str, new_operation_status: OperationStatus
     ) -> None:
-        """Post device operation status"""
+        """Post device operation status."""
         data = {
             "status": [
                 {
@@ -402,7 +404,7 @@ class Client:
     async def post_device_tank_temperature(
         self, long_device_id: str, new_temperature: int
     ) -> None:
-        """Post device tank temperature"""
+        """Post device tank temperature."""
         data = {
             "status": [
                 {
@@ -431,7 +433,7 @@ class Client:
         new_operation_status: OperationStatus,
         new_device_operation_status: OperationStatus = OperationStatus.ON,
     ) -> None:
-        """Post device tank operation status"""
+        """Post device tank operation status."""
         data = {
             "status": [
                 {
@@ -462,7 +464,7 @@ class Client:
         zones: dict[int, OperationStatus],
         operation_status: OperationStatus.ON,
     ) -> None:
-        """Post device operation update"""
+        """Post device operation update."""
         data = {
             "status": [
                 {
@@ -491,7 +493,7 @@ class Client:
     async def post_device_zone_heat_temperature(
         self, long_id: str, zone_id: int, temperature: int
     ) -> None:
-        """Post device zone heat temperature"""
+        """Post device zone heat temperature."""
         return await self._post_device_zone_temperature(
             long_id, zone_id, temperature, "heatSet"
         )
@@ -499,7 +501,7 @@ class Client:
     async def post_device_zone_cool_temperature(
         self, long_id: str, zone_id: int, temperature: int
     ) -> None:
-        """Post device zone cool temperature"""
+        """Post device zone cool temperature."""
         return await self._post_device_zone_temperature(
             long_id, zone_id, temperature, "coolSet"
         )
@@ -508,7 +510,7 @@ class Client:
     async def _post_device_zone_temperature(
         self, long_id: str, zone_id: int, temperature: int, key: str
     ) -> None:
-        """Post device zone temperature"""
+        """Post device zone temperature."""
         data = {
             "status": [
                 {
@@ -533,7 +535,7 @@ class Client:
 
     @auth_required
     async def post_device_set_quiet_mode(self, long_id: str, mode: QuietMode) -> None:
-        """Post quiet mode"""
+        """Post quiet mode."""
         data = {"status": [{"deviceGuid": long_id, "quietMode": mode.value}]}
 
         response = await self.request(
@@ -546,7 +548,7 @@ class Client:
 
     @auth_required
     async def post_device_force_dhw(self, long_id: str, force_dhw: ForceDHW) -> None:
-        """Post quiet mode"""
+        """Post quiet mode."""
         data = {"status": [{"deviceGuid": long_id, "forceDHW": force_dhw.value}]}
 
         response = await self.request(
@@ -558,8 +560,10 @@ class Client:
         )
 
     @auth_required
-    async def post_device_force_heater(self, long_id: str, force_heater: ForceHeater) -> None:
-        """Post quiet mode"""
+    async def post_device_force_heater(
+        self, long_id: str, force_heater: ForceHeater
+    ) -> None:
+        """Post quiet mode."""
         data = {"status": [{"deviceGuid": long_id, "forceHeater": force_heater.value}]}
 
         response = await self.request(
@@ -571,8 +575,25 @@ class Client:
         )
 
     @auth_required
+    async def post_device_holiday_timer(
+        self, long_id: str, holiday_timer: HolidayTimer
+    ) -> None:
+        """Post quiet mode."""
+        data = {
+            "status": [{"deviceGuid": long_id, "holidayTimer": holiday_timer.value}]
+        }
+
+        response = await self.request(
+            "POST",
+            f"{AQUAREA_SERVICE_DEVICES}/{long_id}",
+            referer=AQUAREA_SERVICE_A2W_STATUS_DISPLAY,
+            content_type="application/json",
+            json=data,
+        )
+
+    @auth_required
     async def post_device_request_defrost(self, long_id: str) -> None:
-        """Post quiet mode"""
+        """Post quiet mode."""
         data = {"status": [{"deviceGuid": long_id, "forcedefrost": 1}]}
 
         response = await self.request(
@@ -581,12 +602,12 @@ class Client:
             referer=AQUAREA_SERVICE_A2W_STATUS_DISPLAY,
             content_type="application/json",
             json=data,
-        )    
+        )
 
     async def get_device_consumption(
         self, long_id: str, aggregation: DateType, date_input: str
     ) -> Consumption:
-        """Get device consumption"""
+        """Get device consumption."""
         response = await self.request(
             "GET",
             f"{AQUAREA_SERVICE_CONSUMPTION}/{long_id}?{aggregation}={date_input}",
@@ -598,7 +619,7 @@ class Client:
 
 
 class TankImpl(Tank):
-    """Tank implementation"""
+    """Tank implementation."""
 
     _client: Client
 
@@ -618,7 +639,7 @@ class TankImpl(Tank):
 
 
 class DeviceImpl(Device):
-    """Device implementation able to auto-refresh using the Aquarea Client"""
+    """Device implementation able to auto-refresh using the Aquarea Client."""
 
     def __init__(
         self,
@@ -650,7 +671,7 @@ class DeviceImpl(Device):
             await self.__refresh_consumption__()
 
     async def __refresh_consumption__(self) -> None:
-        """Refreshes the consumption data"""
+        """Refreshes the consumption data."""
         if not self._consumption:
             return
 
@@ -697,7 +718,7 @@ class DeviceImpl(Device):
             if zone_id is None or zone.zone_id == zone_id:
                 zones[zone.zone_id] = (
                     OperationStatus.OFF
-                    if UpdateOperationMode.OFF == mode
+                    if mode == UpdateOperationMode.OFF
                     else OperationStatus.ON
                 )
             else:
@@ -742,9 +763,11 @@ class DeviceImpl(Device):
     async def get_and_refresh_consumption(
         self, date: dt.datetime, consumption_type: ConsumptionType
     ) -> float | None:
-        """Retrieves consumption data and asyncronously refreshes if necessary for the specified date and type.
+        """Retrieve consumption data and asyncronously refreshes if necessary for the specified date and type.
+
         :param date: The date to get the consumption for
-        :param consumption_type: The consumption type to get"""
+        :param consumption_type: The consumption type to get.
+        """
 
         day = date.replace(hour=0, minute=0, second=0, microsecond=0)
 
@@ -757,9 +780,11 @@ class DeviceImpl(Device):
     def get_or_schedule_consumption(
         self, date: dt.datetime, consumption_type: ConsumptionType
     ) -> float | None:
-        """Gets available consumption data or schedules retrieval for the next refresh cycle.
+        """Get available consumption data or schedules retrieval for the next refresh cycle.
+
         :param date: The date to get the consumption for
-        :param consumption_type: The consumption type to get"""
+        :param consumption_type: The consumption type to get
+        """
 
         day = date.replace(hour=0, minute=0, second=0, microsecond=0)
         consumption = self._consumption.get(day, None)
@@ -772,21 +797,31 @@ class DeviceImpl(Device):
 
     async def set_force_dhw(self, force_dhw: ForceDHW) -> None:
         """Set the force dhw.
+
         :param force_dhw: Set the Force DHW mode if the device has a tank.
         """
         if not self.has_tank:
             return
-            
+
         await self._client.post_device_force_dhw(self.long_id, force_dhw)
 
     async def set_force_heater(self, force_heater: ForceHeater) -> None:
         """Set the force heater configuration.
+
         :param force_heater: The force heater mode.
         """
         if self.force_heater is not force_heater:
             await self._client.post_device_force_heater(self.long_id, force_heater)
 
     async def request_defrost(self) -> None:
-        """Request defrost"""
+        """Request defrost."""
         if self.device_mode_status is not DeviceModeStatus.DEFROST:
             await self._client.post_device_request_defrost(self.long_id)
+
+    async def set_holiday_timer(self, holiday_timer: HolidayTimer) -> None:
+        """Enables or disables the holiday timer mode.
+
+        :param holiday_timer: The holiday timer option
+        """
+        if self.holiday_timer is not holiday_timer:
+            await self._client.post_device_holiday_timer(self.long_id, holiday_timer)

@@ -92,21 +92,34 @@ class QuietMode(IntEnum):
     LEVEL2 = 2
     LEVEL3 = 3
 
+
 class ForceDHW(IntEnum):
     """Force DHW"""
+
     OFF = 0
     ON = 1
 
+
 class ForceHeater(IntEnum):
     """Force Heater"""
+
     OFF = 0
     ON = 1
+
+
+class HolidayTimer(IntEnum):
+    """Holiday Timer"""
+
+    OFF = 0
+    ON = 1
+
 
 class DeviceModeStatus(IntEnum):
     """Device mode status"""
 
     NORMAL = 0
     DEFROST = 1
+
 
 @dataclass
 class TankStatus:
@@ -166,7 +179,7 @@ class DeviceInfo:
     zones: list[DeviceZoneInfo]
 
 
-@dataclass
+@dataclass(kw_only=True)
 class DeviceStatus:
     """Device status"""
 
@@ -183,6 +196,7 @@ class DeviceStatus:
     quiet_mode: QuietMode
     force_dhw: ForceDHW
     force_heater: ForceHeater
+    holiday_timer: HolidayTimer
 
 
 @dataclass
@@ -512,6 +526,11 @@ class Device(ABC):
         """The mode of the device"""
         return self._status.device_status
 
+    @property
+    def holiday_timer(self) -> HolidayTimer:
+        """Specifies if the holiday timer is enabled"""
+        return self._status.holiday_timer
+
     def support_cooling(self, zone_id: int = 1) -> bool:
         """True if the device supports cooling in the given zone"""
         zone = self.zones.get(zone_id, None)
@@ -594,3 +613,10 @@ class Device(ABC):
     @abstractmethod
     async def request_defrost(self) -> None:
         """Request defrost"""
+
+    @abstractmethod
+    async def set_holiday_timer(self, holiday_timer: HolidayTimer) -> None:
+        """Enables or disables the holiday timer mode.
+
+        :param holiday_timer: The holiday timer option
+        """
