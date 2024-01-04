@@ -121,6 +121,15 @@ class DeviceModeStatus(IntEnum):
     DEFROST = 1
 
 
+class PowerfulTime(IntEnum):
+    """Powerful time"""
+
+    OFF = 0
+    ON_30MIN = 1
+    ON_60MIN = 2
+    ON_90MIN = 3
+
+
 @dataclass
 class TankStatus:
     """Tank status"""
@@ -197,6 +206,7 @@ class DeviceStatus:
     force_dhw: ForceDHW
     force_heater: ForceHeater
     holiday_timer: HolidayTimer
+    powerful_time: PowerfulTime
 
 
 @dataclass
@@ -531,6 +541,11 @@ class Device(ABC):
         """Specifies if the holiday timer is enabled"""
         return self._status.holiday_timer
 
+    @property
+    def powerful_time(self) -> PowerfulTime:
+        """Specifies if the powerful time is enabled and for how long"""
+        return self._status.powerful_time
+
     def support_cooling(self, zone_id: int = 1) -> bool:
         """True if the device supports cooling in the given zone"""
         zone = self.zones.get(zone_id, None)
@@ -619,4 +634,11 @@ class Device(ABC):
         """Enables or disables the holiday timer mode.
 
         :param holiday_timer: The holiday timer option
+        """
+
+    @abstractmethod
+    async def set_powerful_time(self, powerful_time: PowerfulTime) -> None:
+        """Set the powerful time.
+
+        :param powerful_time: Time to enable powerful mode
         """

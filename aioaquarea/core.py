@@ -32,6 +32,7 @@ from .data import (
     HolidayTimer,
     OperationMode,
     OperationStatus,
+    PowerfulTime,
     QuietMode,
     SensorMode,
     Tank,
@@ -346,6 +347,7 @@ class Client:
             force_dhw=ForceDHW(device.get("forceDHW", 0)),
             force_heater=ForceHeater(device.get("forceHeater", 0)),
             holiday_timer=HolidayTimer(device.get("holidayTimer", 0)),
+            powerful_time=PowerfulTime(device.get("powerful", 0)),
         )
 
         return device_status
@@ -604,6 +606,28 @@ class Client:
             json=data,
         )
 
+    @auth_required
+    async def post_device_set_powerful_time(
+        self, long_id: str, powerful_time: PowerfulTime
+    ) -> None:
+        """Post powerful time."""
+        data = {
+            "status": [
+                {
+                    "deviceGuid": long_id,
+                    "powerfulRequest": powerful_time.value,
+                }
+            ]
+        }
+
+        response = await self.request(
+            "POST",
+            f"{AQUAREA_SERVICE_DEVICES}/{long_id}",
+            referer=AQUAREA_SERVICE_A2W_STATUS_DISPLAY,
+            content_type="application/json",
+            json=data,
+        )
+
     async def get_device_consumption(
         self, long_id: str, aggregation: DateType, date_input: str
     ) -> Consumption:
@@ -819,9 +843,19 @@ class DeviceImpl(Device):
             await self._client.post_device_request_defrost(self.long_id)
 
     async def set_holiday_timer(self, holiday_timer: HolidayTimer) -> None:
-        """Enables or disables the holiday timer mode.
+        """Enable or disable the holiday timer mode.
 
         :param holiday_timer: The holiday timer option
         """
         if self.holiday_timer is not holiday_timer:
             await self._client.post_device_holiday_timer(self.long_id, holiday_timer)
+
+    async def set_powerful_time(self, powerful_time: PowerfulTime) -> None:
+        """Set the powerful time.
+
+        :param powerful_time: Time to enable powerful mode
+        """
+        if self.powerful_time is not powerful_time:
+            await self._client.post_device_set_powerful_time(
+                self.long_id, powerful_time
+            )
