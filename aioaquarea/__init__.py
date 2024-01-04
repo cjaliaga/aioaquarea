@@ -18,6 +18,7 @@ from .data import (
     Tank,
     UpdateOperationMode,
     HolidayTimer,
+    PowerfulTime,
 )
 from .errors import (
     ApiError,
@@ -53,4 +54,5 @@ __all__: Tuple[str, ...] = (
     "DeviceModeStatus",
     "ForceHeater",
     "HolidayTimer",
+    "PowerfulTime",
 )
