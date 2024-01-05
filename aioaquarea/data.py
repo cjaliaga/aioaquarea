@@ -188,7 +188,7 @@ class DeviceInfo:
     zones: list[DeviceZoneInfo]
 
 
-@dataclass(kw_only=True)
+@dataclass()
 class DeviceStatus:
     """Device status"""
 
