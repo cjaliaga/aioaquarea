@@ -37,6 +37,7 @@ from .data import (
     PowerfulTime,
     QuietMode,
     SensorMode,
+    SpecialStatus,
     Tank,
     TankStatus,
     UpdateOperationMode,
@@ -362,6 +363,12 @@ class Client:
         device = data.get("status")[0]
         operation_mode_value = device.get("operationMode")
 
+        enabled_special_modes = [
+            mode["specialMode"]
+            for mode in device.get("specialStatus", [])
+            if mode.get("operationStatus") == 1
+        ]
+
         device_status = DeviceStatus(
             long_id=long_id,
             operation_status=OperationStatus(device.get("operationStatus")),
@@ -405,6 +412,9 @@ class Client:
             force_heater=ForceHeater(device.get("forceHeater", 0)),
             holiday_timer=HolidayTimer(device.get("holidayTimer", 0)),
             powerful_time=PowerfulTime(device.get("powerful", 0)),
+            special_status=SpecialStatus(enabled_special_modes[0])
+            if enabled_special_modes
+            else None,
         )
 
         return device_status

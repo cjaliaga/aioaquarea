@@ -130,6 +130,13 @@ class PowerfulTime(IntEnum):
     ON_90MIN = 3
 
 
+class SpecialStatus(IntEnum):
+    """Special status"""
+
+    ECO = 1
+    CONFORT = 2
+
+
 @dataclass
 class TankStatus:
     """Tank status"""
@@ -190,7 +197,13 @@ class DeviceInfo:
 
 @dataclass()
 class DeviceStatus:
-    """Device status"""
+    """Device status
+
+    Parameters
+    ----------
+    special_status : SpecialStatus  | None
+        Current special status of the device. As of now it only supports one value at a time.
+    """
 
     long_id: str
     operation_status: OperationStatus
@@ -207,6 +220,7 @@ class DeviceStatus:
     force_heater: ForceHeater
     holiday_timer: HolidayTimer
     powerful_time: PowerfulTime
+    special_status: SpecialStatus | None
 
 
 @dataclass
@@ -313,6 +327,11 @@ class DeviceZone:
     @property
     def supports_set_temperature(self) -> bool:
         """Gets if the zone supports setting the temperature"""
+        return self.sensor_mode != ZoneSensor.EXTERNAL
+
+    @property
+    def supports_special_status(self) -> bool:
+        """Gets if the zone supports special status"""
         return self.sensor_mode != ZoneSensor.EXTERNAL
 
 
@@ -546,10 +565,20 @@ class Device(ABC):
         """Specifies if the powerful time is enabled and for how long"""
         return self._status.powerful_time
 
+    @property
+    def special_status(self) -> SpecialStatus | None:
+        """Specifies if the device is in a special status"""
+        return self._status.special_status
+
     def support_cooling(self, zone_id: int = 1) -> bool:
         """True if the device supports cooling in the given zone"""
         zone = self.zones.get(zone_id, None)
         return zone is not None and zone.cool_mode
+
+    @property
+    def support_special_status(self) -> bool:
+        """True if the device supports special status"""
+        return any(zone.supports_special_status for zone in self.zones.values())
 
     @abstractmethod
     async def __set_operation_status__(self, status: OperationStatus) -> None:
