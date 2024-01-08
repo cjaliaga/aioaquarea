@@ -100,14 +100,28 @@ class Client:
     def __init__(
         self,
         session: aiohttp.ClientSession,
-        username: str = "",
-        password: str = "",
+        username: str | None = None,
+        password: str | None = None,
         refresh_login: bool = True,
         logger: Optional[logging.Logger] = None,
         environment: AquareaEnvironment = AquareaEnvironment.PRODUCTION,
         device_direct: bool = True,
     ):
-        """Initialize the client."""
+        """
+        Initializes a new instance of the `Core` class.
+
+        Args:
+            session (aiohttp.ClientSession): The aiohttp client session.
+            username (str, optional): The username for authentication. Defaults to None.
+            password (str, optional): The password for authentication. Defaults to None.
+            refresh_login (bool, optional): Whether to refresh the login. Defaults to True.
+            logger (Optional[logging.Logger], optional): The logger instance. Defaults to None.
+            environment (AquareaEnvironment, optional): The environment to use. Defaults to AquareaEnvironment.PRODUCTION.
+            device_direct (bool, optional): Whether to use device direct mode. Defaults to True.
+
+        Raises:
+            ValueError: If the environment is set to PRODUCTION and username or password are not provided.
+        """
         if environment == AquareaEnvironment.PRODUCTION and (
             not username or not password
         ):
