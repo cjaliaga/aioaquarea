@@ -249,9 +249,7 @@ class Client:
             self._login_lock.release()
 
     async def _login_demo(self) -> None:
-        response: aiohttp.ClientResponse = await self.request(
-            "GET", "", referer=self._base_url
-        )
+        _ = await self.request("GET", "", referer=self._base_url)
         self._token_expiration = dt.datetime.astimezone(
             dt.datetime.utcnow(), tz=dt.timezone.utc
         ) + dt.timedelta(days=1)
