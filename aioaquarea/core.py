@@ -239,45 +239,49 @@ class Client:
                 return
 
             if self._environment is AquareaEnvironment.DEMO:
-                response: aiohttp.ClientResponse = await self.request(
-                    "GET", "", referer=self._base_url
-                )
-                self._last_login = dt.datetime.now()
-                self._token_expiration = dt.datetime.astimezone(
-                    dt.datetime.utcnow(), tz=dt.timezone.utc
-                ) + dt.timedelta(days=1)
-                return
-
-            params = {
-                "var.inputOmit": "false",
-                "var.loginId": self.username,
-                "var.password": self.password,
-            }
-
-            response: aiohttp.ClientResponse = await self.request(
-                "POST",
-                AQUAREA_SERVICE_LOGIN,
-                referer=self._base_url,
-                data=urllib.parse.urlencode(params),
-            )
-
-            data = await response.json()
-
-            if not isinstance(data, dict):
-                raise InvalidData(data)
-
-            self._token_expiration = dt.datetime.strptime(
-                data["accessToken"]["expires"], "%Y-%m-%dT%H:%M:%S%z"
-            )
-
-            self._logger.info(
-                f"Login successful for {self.username}. Access Token Expiration: {self._token_expiration}"
-            )
+                await self._login_demo()
+            else:
+                await self._login_production()
 
             self._last_login = dt.datetime.now()
 
         finally:
             self._login_lock.release()
+
+    async def _login_demo(self) -> None:
+        response: aiohttp.ClientResponse = await self.request(
+            "GET", "", referer=self._base_url
+        )
+        self._token_expiration = dt.datetime.astimezone(
+            dt.datetime.utcnow(), tz=dt.timezone.utc
+        ) + dt.timedelta(days=1)
+
+    async def _login_production(self) -> None:
+        params = {
+            "var.inputOmit": "false",
+            "var.loginId": self.username,
+            "var.password": self.password,
+        }
+
+        response: aiohttp.ClientResponse = await self.request(
+            "POST",
+            AQUAREA_SERVICE_LOGIN,
+            referer=self._base_url,
+            data=urllib.parse.urlencode(params),
+        )
+
+        data = await response.json()
+
+        if not isinstance(data, dict):
+            raise InvalidData(data)
+
+        self._token_expiration = dt.datetime.strptime(
+            data["accessToken"]["expires"], "%Y-%m-%dT%H:%M:%S%z"
+        )
+
+        self._logger.info(
+            f"Login successful for {self.username}. Access Token Expiration: {self._token_expiration}"
+        )
 
     @auth_required
     async def get_devices(self, include_long_id=False) -> list[DeviceInfo]:
