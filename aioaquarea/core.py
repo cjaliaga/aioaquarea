@@ -100,13 +100,19 @@ class Client:
     def __init__(
         self,
         session: aiohttp.ClientSession,
-        username: str,
-        password: str,
+        username: str = "",
+        password: str = "",
         refresh_login: bool = True,
         logger: Optional[logging.Logger] = None,
         environment: AquareaEnvironment = AquareaEnvironment.PRODUCTION,
         device_direct: bool = True,
     ):
+        """Initialize the client."""
+        if environment == AquareaEnvironment.PRODUCTION and (
+            not username or not password
+        ):
+            raise ValueError("Username and password must be provided")
+
         self._login_lock = asyncio.Lock()
         self._sess = session
         self._username = username
@@ -311,16 +317,18 @@ class Client:
         cookies = dict(selectedGwid=device_id)
 
         if self._environment is AquareaEnvironment.DEMO:
-            resp: aiohttp.ClientResponse = await self.request(
-                "GET", "", referer=self._base_url
+            return (
+                self._sess.cookie_jar.filter_cookies(self._base_url)
+                .get("selectedDeviceId")
+                .value
             )
-        else:
-            resp = await self.request(
-                "POST",
-                AQUAREA_SERVICE_CONTRACT,
-                referer=self._base_url,
-                cookies=cookies,
-            )
+
+        resp = await self.request(
+            "POST",
+            AQUAREA_SERVICE_CONTRACT,
+            referer=self._base_url,
+            cookies=cookies,
+        )
         return resp.cookies.get("selectedDeviceId").value
 
     @auth_required
@@ -331,7 +339,7 @@ class Client:
             "GET",
             f"{AQUAREA_SERVICE_DEVICES}/{long_id}",
             referer=self._base_url,
-            params=params,
+            data=urllib.parse.urlencode(params),
         )
         data = await response.json()
 
