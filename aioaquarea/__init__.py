@@ -30,6 +30,8 @@ from .errors import (
 )
 from .statistics import Consumption, ConsumptionType, DateType
 
+from .const import AquareaEnvironment
+
 __all__: Tuple[str, ...] = (
     "Client",
     "Device",
@@ -55,4 +57,5 @@ __all__: Tuple[str, ...] = (
     "ForceHeater",
     "HolidayTimer",
     "PowerfulTime",
+    "AquareaEnvironment",
 )

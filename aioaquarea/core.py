@@ -15,8 +15,10 @@ from .const import (
     AQUAREA_SERVICE_BASE,
     AQUAREA_SERVICE_CONSUMPTION,
     AQUAREA_SERVICE_CONTRACT,
+    AQUAREA_SERVICE_DEMO_BASE,
     AQUAREA_SERVICE_DEVICES,
     AQUAREA_SERVICE_LOGIN,
+    AquareaEnvironment,
 )
 from .data import (
     Device,
@@ -98,11 +100,33 @@ class Client:
     def __init__(
         self,
         session: aiohttp.ClientSession,
-        username: str,
-        password: str,
+        username: str | None = None,
+        password: str | None = None,
         refresh_login: bool = True,
         logger: Optional[logging.Logger] = None,
+        environment: AquareaEnvironment = AquareaEnvironment.PRODUCTION,
+        device_direct: bool = True,
     ):
+        """
+        Initializes a new instance of the `Core` class.
+
+        Args:
+            session (aiohttp.ClientSession): The aiohttp client session.
+            username (str, optional): The username for authentication. Defaults to None.
+            password (str, optional): The password for authentication. Defaults to None.
+            refresh_login (bool, optional): Whether to refresh the login. Defaults to True.
+            logger (Optional[logging.Logger], optional): The logger instance. Defaults to None.
+            environment (AquareaEnvironment, optional): The environment to use. Defaults to AquareaEnvironment.PRODUCTION.
+            device_direct (bool, optional): Whether to use device direct mode. Defaults to True.
+
+        Raises:
+            ValueError: If the environment is set to PRODUCTION and username or password are not provided.
+        """
+        if environment == AquareaEnvironment.PRODUCTION and (
+            not username or not password
+        ):
+            raise ValueError("Username and password must be provided")
+
         self._login_lock = asyncio.Lock()
         self._sess = session
         self._username = username
@@ -111,6 +135,15 @@ class Client:
         self._logger = logger or logging.getLogger("aioaquarea")
         self._token_expiration: Optional[dt.datetime] = None
         self._last_login: dt.datetime = dt.datetime.min
+        self._environment = environment
+        self._base_url = (
+            AQUAREA_SERVICE_BASE
+            if environment == AquareaEnvironment.PRODUCTION
+            else AQUAREA_SERVICE_DEMO_BASE
+        )
+        self._device_direct = (
+            device_direct if environment == AquareaEnvironment.PRODUCTION else False
+        )
 
     @property
     def username(self) -> str:
@@ -164,7 +197,7 @@ class Client:
         headers["content-type"] = content_type
         kwargs["headers"] = headers
 
-        resp = await self._sess.request(method, AQUAREA_SERVICE_BASE + url, **kwargs)
+        resp = await self._sess.request(method, self._base_url + url, **kwargs)
 
         # Aquarea returns a 200 even if the request failed, we need to check the message property to see if it's an error
         # Some errors just require to login again, so we raise a AuthenticationError in those known cases
@@ -205,36 +238,48 @@ class Client:
             if self._last_login > intent:
                 return
 
-            params = {
-                "var.inputOmit": "false",
-                "var.loginId": self.username,
-                "var.password": self.password,
-            }
-
-            response: aiohttp.ClientResponse = await self.request(
-                "POST",
-                AQUAREA_SERVICE_LOGIN,
-                referer=AQUAREA_SERVICE_BASE,
-                data=urllib.parse.urlencode(params),
-            )
-
-            data = await response.json()
-
-            if not isinstance(data, dict):
-                raise InvalidData(data)
-
-            self._token_expiration = dt.datetime.strptime(
-                data["accessToken"]["expires"], "%Y-%m-%dT%H:%M:%S%z"
-            )
-
-            self._logger.info(
-                f"Login successful for {self.username}. Access Token Expiration: {self._token_expiration}"
-            )
+            if self._environment is AquareaEnvironment.DEMO:
+                await self._login_demo()
+            else:
+                await self._login_production()
 
             self._last_login = dt.datetime.now()
 
         finally:
             self._login_lock.release()
+
+    async def _login_demo(self) -> None:
+        _ = await self.request("GET", "", referer=self._base_url)
+        self._token_expiration = dt.datetime.astimezone(
+            dt.datetime.utcnow(), tz=dt.timezone.utc
+        ) + dt.timedelta(days=1)
+
+    async def _login_production(self) -> None:
+        params = {
+            "var.inputOmit": "false",
+            "var.loginId": self.username,
+            "var.password": self.password,
+        }
+
+        response: aiohttp.ClientResponse = await self.request(
+            "POST",
+            AQUAREA_SERVICE_LOGIN,
+            referer=self._base_url,
+            data=urllib.parse.urlencode(params),
+        )
+
+        data = await response.json()
+
+        if not isinstance(data, dict):
+            raise InvalidData(data)
+
+        self._token_expiration = dt.datetime.strptime(
+            data["accessToken"]["expires"], "%Y-%m-%dT%H:%M:%S%z"
+        )
+
+        self._logger.info(
+            f"Login successful for {self.username}. Access Token Expiration: {self._token_expiration}"
+        )
 
     @auth_required
     async def get_devices(self, include_long_id=False) -> list[DeviceInfo]:
@@ -286,10 +331,18 @@ class Client:
     async def get_device_long_id(self, device_id: str) -> str:
         """Retrives device long id to be used to retrive device status."""
         cookies = dict(selectedGwid=device_id)
+
+        if self._environment is AquareaEnvironment.DEMO:
+            return (
+                self._sess.cookie_jar.filter_cookies(self._base_url)
+                .get("selectedDeviceId")
+                .value
+            )
+
         resp = await self.request(
             "POST",
             AQUAREA_SERVICE_CONTRACT,
-            referer=AQUAREA_SERVICE_BASE,
+            referer=self._base_url,
             cookies=cookies,
         )
         return resp.cookies.get("selectedDeviceId").value
@@ -297,8 +350,12 @@ class Client:
     @auth_required
     async def get_device_status(self, long_id: str) -> DeviceStatus:
         """Retrives device status."""
+        params = {"var.deviceDirect": "1"} if self._device_direct else {}
         response = await self.request(
-            "GET", f"{AQUAREA_SERVICE_DEVICES}/{long_id}?var.deviceDirect=1"
+            "GET",
+            f"{AQUAREA_SERVICE_DEVICES}/{long_id}",
+            referer=self._base_url,
+            data=urllib.parse.urlencode(params),
         )
         data = await response.json()
 
@@ -395,7 +452,7 @@ class Client:
         response = await self.request(
             "POST",
             f"{AQUAREA_SERVICE_DEVICES}/{long_device_id}",
-            referer=AQUAREA_SERVICE_A2W_STATUS_DISPLAY,
+            referer=f"{self._base_url}{AQUAREA_SERVICE_A2W_STATUS_DISPLAY}",
             content_type="application/json",
             json=data,
         )
@@ -423,7 +480,7 @@ class Client:
         response = await self.request(
             "POST",
             f"{AQUAREA_SERVICE_DEVICES}/{long_device_id}",
-            referer=AQUAREA_SERVICE_A2W_STATUS_DISPLAY,
+            referer=f"{self._base_url}{AQUAREA_SERVICE_A2W_STATUS_DISPLAY}",
             content_type="application/json",
             json=data,
         )
@@ -453,7 +510,7 @@ class Client:
         response = await self.request(
             "POST",
             f"{AQUAREA_SERVICE_DEVICES}/{long_device_id}",
-            referer=AQUAREA_SERVICE_A2W_STATUS_DISPLAY,
+            referer=f"{self._base_url}{AQUAREA_SERVICE_A2W_STATUS_DISPLAY}",
             content_type="application/json",
             json=data,
         )
@@ -487,7 +544,7 @@ class Client:
         response = await self.request(
             "POST",
             f"{AQUAREA_SERVICE_DEVICES}/{long_id}",
-            referer=AQUAREA_SERVICE_A2W_STATUS_DISPLAY,
+            referer=f"{self._base_url}{AQUAREA_SERVICE_A2W_STATUS_DISPLAY}",
             content_type="application/json",
             json=data,
         )
@@ -530,7 +587,7 @@ class Client:
         response = await self.request(
             "POST",
             f"{AQUAREA_SERVICE_DEVICES}/{long_id}",
-            referer=AQUAREA_SERVICE_A2W_STATUS_DISPLAY,
+            referer=f"{self._base_url}{AQUAREA_SERVICE_A2W_STATUS_DISPLAY}",
             content_type="application/json",
             json=data,
         )
@@ -543,7 +600,7 @@ class Client:
         response = await self.request(
             "POST",
             f"{AQUAREA_SERVICE_DEVICES}/{long_id}",
-            referer=AQUAREA_SERVICE_A2W_STATUS_DISPLAY,
+            referer=f"{self._base_url}{AQUAREA_SERVICE_A2W_STATUS_DISPLAY}",
             content_type="application/json",
             json=data,
         )
@@ -556,7 +613,7 @@ class Client:
         response = await self.request(
             "POST",
             f"{AQUAREA_SERVICE_DEVICES}/{long_id}",
-            referer=AQUAREA_SERVICE_A2W_STATUS_DISPLAY,
+            referer=f"{self._base_url}{AQUAREA_SERVICE_A2W_STATUS_DISPLAY}",
             content_type="application/json",
             json=data,
         )
@@ -571,7 +628,7 @@ class Client:
         response = await self.request(
             "POST",
             f"{AQUAREA_SERVICE_DEVICES}/{long_id}",
-            referer=AQUAREA_SERVICE_A2W_STATUS_DISPLAY,
+            referer=f"{self._base_url}{AQUAREA_SERVICE_A2W_STATUS_DISPLAY}",
             content_type="application/json",
             json=data,
         )
@@ -588,7 +645,7 @@ class Client:
         response = await self.request(
             "POST",
             f"{AQUAREA_SERVICE_DEVICES}/{long_id}",
-            referer=AQUAREA_SERVICE_A2W_STATUS_DISPLAY,
+            referer=f"{self._base_url}{AQUAREA_SERVICE_A2W_STATUS_DISPLAY}",
             content_type="application/json",
             json=data,
         )
@@ -601,7 +658,7 @@ class Client:
         response = await self.request(
             "POST",
             f"{AQUAREA_SERVICE_DEVICES}/{long_id}",
-            referer=AQUAREA_SERVICE_A2W_STATUS_DISPLAY,
+            referer=f"{self._base_url}{AQUAREA_SERVICE_A2W_STATUS_DISPLAY}",
             content_type="application/json",
             json=data,
         )
@@ -623,7 +680,7 @@ class Client:
         response = await self.request(
             "POST",
             f"{AQUAREA_SERVICE_DEVICES}/{long_id}",
-            referer=AQUAREA_SERVICE_A2W_STATUS_DISPLAY,
+            referer=f"{self._base_url}{AQUAREA_SERVICE_A2W_STATUS_DISPLAY}",
             content_type="application/json",
             json=data,
         )
@@ -635,7 +692,7 @@ class Client:
         response = await self.request(
             "GET",
             f"{AQUAREA_SERVICE_CONSUMPTION}/{long_id}?{aggregation}={date_input}",
-            referer=AQUAREA_SERVICE_A2W_STATUS_DISPLAY,
+            referer=f"{self._base_url}{AQUAREA_SERVICE_A2W_STATUS_DISPLAY}",
         )
 
         date_data = await response.json()
