@@ -19,6 +19,7 @@ from .data import (
     UpdateOperationMode,
     HolidayTimer,
     PowerfulTime,
+    SpecialStatus
 )
 from .errors import (
     ApiError,
@@ -58,4 +59,5 @@ __all__: Tuple[str, ...] = (
     "HolidayTimer",
     "PowerfulTime",
     "AquareaEnvironment",
+    "SpecialStatus",
 )
