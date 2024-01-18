@@ -8,7 +8,7 @@ from datetime import datetime
 
 from .const import PANASONIC
 from .statistics import Consumption, ConsumptionType
-from .util import LimitedSizeDict
+from .util import LimitedSizeDict, limit_range
 
 try:
     from enum import StrEnum
@@ -130,6 +130,17 @@ class PowerfulTime(IntEnum):
     ON_90MIN = 3
 
 
+class SpecialStatus(IntEnum):
+    """Special status"""
+
+    ECO = 1
+    COMFORT = 2
+
+@dataclass
+class TemperatureModifiers:
+    heat: int | None
+    cool: int | None
+
 @dataclass
 class TankStatus:
     """Tank status"""
@@ -173,6 +184,10 @@ class DeviceZoneStatus:
     cool_max: int | None
     cool_min: int | None
     cool_set: int | None
+    comfort_heat: int | None
+    comfort_cool: int | None
+    eco_heat: int | None
+    eco_cool: int | None
 
 
 @dataclass
@@ -190,7 +205,13 @@ class DeviceInfo:
 
 @dataclass()
 class DeviceStatus:
-    """Device status"""
+    """Device status
+
+    Parameters
+    ----------
+    special_status : SpecialStatus  | None
+        Current special status of the device. As of now it only supports one value at a time.
+    """
 
     long_id: str
     operation_status: OperationStatus
@@ -207,7 +228,14 @@ class DeviceStatus:
     force_heater: ForceHeater
     holiday_timer: HolidayTimer
     powerful_time: PowerfulTime
+    special_status: SpecialStatus | None
 
+
+@dataclass
+class ZoneTemperatureSetUpdate:
+    zone_id: int
+    cool_set: int | None
+    heat_set: int | None
 
 @dataclass
 class OperationStatusUpdate:
@@ -234,6 +262,12 @@ class DeviceZone:
     def __init__(self, info: DeviceZoneInfo, status: DeviceZoneStatus) -> None:
         self._info = info
         self._status = status
+
+        if self.supports_special_status:
+            self._temperature_modifiers = {
+                SpecialStatus.ECO: TemperatureModifiers(self._status.eco_heat, self._status.eco_cool),
+                SpecialStatus.COMFORT: TemperatureModifiers(self._status.comfort_heat, self._status.comfort_cool)
+            }
 
     @property
     def zone_id(self) -> int:
@@ -314,6 +348,26 @@ class DeviceZone:
     def supports_set_temperature(self) -> bool:
         """Gets if the zone supports setting the temperature"""
         return self.sensor_mode != ZoneSensor.EXTERNAL
+
+    @property
+    def supports_special_status(self) -> bool:
+        """Gets if the zone supports special status"""
+        return self.sensor_mode != ZoneSensor.EXTERNAL
+    
+    @property
+    def eco(self) -> TemperatureModifiers:
+        """Gets the eco temperature modifiers for the zone"""
+        return self.temperature_modifiers[SpecialStatus.ECO]
+    
+    @property
+    def comfort(self) -> TemperatureModifiers:
+        """Gets the confort temperature modifiers for the zone"""
+        return self.temperature_modifiers[SpecialStatus.COMFORT]
+    
+    @property
+    def temperature_modifiers(self) -> dict[SpecialStatus, TemperatureModifiers]:
+        """Gets the temperature modifiers for the zone"""
+        return self._temperature_modifiers
 
 
 class Tank(ABC):
@@ -546,10 +600,73 @@ class Device(ABC):
         """Specifies if the powerful time is enabled and for how long"""
         return self._status.powerful_time
 
+    @property
+    def special_status(self) -> SpecialStatus | None:
+        """Specifies if the device is in a special status"""
+        return self._status.special_status
+
     def support_cooling(self, zone_id: int = 1) -> bool:
         """True if the device supports cooling in the given zone"""
         zone = self.zones.get(zone_id, None)
         return zone is not None and zone.cool_mode
+
+    @property
+    def support_special_status(self) -> bool:
+        """True if the device supports special status"""
+        return any(zone.supports_special_status for zone in self.zones.values())
+    
+    async def set_special_status(self, special_status: SpecialStatus | None) -> None:
+        """Set the special status.
+        :param special_status: Special status to set
+        """
+
+        if not self.support_special_status:
+            raise Exception("Device does not support special status")
+
+        if self.special_status == special_status:
+            return
+
+        zones: list[ZoneTemperatureSetUpdate] = [
+            self.__calculate_zone_special_status_update__(zone, special_status)
+            for zone in self.zones.values()
+        ]
+
+        await self.__set_special_status__(special_status, zones)
+
+    @abstractmethod
+    async def __set_special_status__(special_status: SpecialStatus | None, zones: list[ZoneTemperatureSetUpdate]) -> None:
+        """Set the special status.
+        :param special_status: Special status to set
+        :param zones: Zones to set the special status for
+        """
+            
+    def __calculate_zone_special_status_update__(
+        self, zone: DeviceZone, special_status: SpecialStatus | None
+    ) -> ZoneTemperatureSetUpdate:
+        """Calculate the zone temperature set update based on the special status.
+        :param zone: The zone for which to calculate the update
+        :param special_status: The special status to set
+        :return: The zone temperature set update
+        """
+
+        current_status = self.special_status
+        cool_set = zone.cool_target_temperature
+        heat_set = zone.heat_target_temperature
+
+        """If the zone is already on a special status, we need to revert the temperature to normal first"""
+        if current_status is not None:
+            modifiers = zone.temperature_modifiers[current_status]
+            cool_set = limit_range(cool_set - modifiers.cool, zone.cool_min, zone.cool_max) if cool_set is not None else None
+            heat_set = limit_range(heat_set - modifiers.heat, zone.heat_min, zone.heat_max) if heat_set is not None else None
+        
+        """If we're setting a special status, we need to apply the modifiers"""
+        if special_status is not None:
+            modifiers = zone.temperature_modifiers[special_status]
+            cool_set = limit_range(cool_set + modifiers.cool, zone.cool_min, zone.cool_max) if cool_set is not None else None
+            heat_set = limit_range(heat_set + modifiers.heat, zone.heat_min, zone.heat_max) if heat_set is not None else None
+        
+        return ZoneTemperatureSetUpdate(zone.zone_id, cool_set, heat_set)
+ 
 
     @abstractmethod
     async def __set_operation_status__(self, status: OperationStatus) -> None:

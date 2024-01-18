@@ -37,10 +37,12 @@ from .data import (
     PowerfulTime,
     QuietMode,
     SensorMode,
+    SpecialStatus,
     Tank,
     TankStatus,
     UpdateOperationMode,
     ZoneSensor,
+    ZoneTemperatureSetUpdate,
 )
 from .errors import (
     ApiError,
@@ -362,6 +364,12 @@ class Client:
         device = data.get("status")[0]
         operation_mode_value = device.get("operationMode")
 
+        enabled_special_modes = [
+            mode["specialMode"]
+            for mode in device.get("specialStatus", [])
+            if mode.get("operationStatus") == 1
+        ]
+
         device_status = DeviceStatus(
             long_id=long_id,
             operation_status=OperationStatus(device.get("operationStatus")),
@@ -388,15 +396,19 @@ class Client:
             ],
             zones=[
                 DeviceZoneStatus(
-                    zone_status["zoneId"],
-                    zone_status["temparatureNow"],
-                    OperationStatus(zone_status["operationStatus"]),
-                    zone_status["heatMax"],
-                    zone_status["heatMin"],
-                    zone_status["heatSet"],
-                    zone_status["coolMax"],
-                    zone_status["coolMin"],
-                    zone_status["coolSet"],
+                    zone_id=zone_status["zoneId"],
+                    temperature=zone_status["temparatureNow"],
+                    operation_status=OperationStatus(zone_status["operationStatus"]),
+                    heat_max=zone_status["heatMax"],
+                    heat_min=zone_status["heatMin"],
+                    heat_set=zone_status["heatSet"],
+                    cool_max=zone_status["coolMax"],
+                    cool_min=zone_status["coolMin"],
+                    cool_set=zone_status["coolSet"],
+                    comfort_cool=zone_status["comfortCool"],
+                    comfort_heat=zone_status["comfortHeat"],
+                    eco_cool=zone_status["ecoCool"],
+                    eco_heat=zone_status["ecoHeat"],
                 )
                 for zone_status in device.get("zoneStatus", [])
             ],
@@ -405,6 +417,9 @@ class Client:
             force_heater=ForceHeater(device.get("forceHeater", 0)),
             holiday_timer=HolidayTimer(device.get("holidayTimer", 0)),
             powerful_time=PowerfulTime(device.get("powerful", 0)),
+            special_status=SpecialStatus(enabled_special_modes[0])
+            if enabled_special_modes
+            else None,
         )
 
         return device_status
@@ -521,7 +536,7 @@ class Client:
         long_id: str,
         mode: UpdateOperationMode,
         zones: dict[int, OperationStatus],
-        operation_status: OperationStatus.ON,
+        operation_status: OperationStatus,
     ) -> None:
         """Post device operation update."""
         data = {
@@ -536,6 +551,39 @@ class Client:
                             "operationStatus": zones[zone_id].value,
                         }
                         for zone_id in zones
+                    ],
+                }
+            ]
+        }
+
+        response = await self.request(
+            "POST",
+            f"{AQUAREA_SERVICE_DEVICES}/{long_id}",
+            referer=f"{self._base_url}{AQUAREA_SERVICE_A2W_STATUS_DISPLAY}",
+            content_type="application/json",
+            json=data,
+        )
+
+    @auth_required
+    async def post_device_set_special_status(
+        self,
+        long_id: str,
+        special_status: SpecialStatus | None,
+        zones: list[ZoneTemperatureSetUpdate]
+    ) -> None:
+        """Post device operation update."""
+        data = {
+            "status": [
+                {
+                    "deviceGuid": long_id,
+                    "specialStatus": special_status.value if special_status else 0,
+                    "zoneStatus": [
+                        {
+                            "zoneId": zone.zone_id,
+                            "heatSet": zone.heat_set,
+                            **({"coolSet": zone.cool_set} if zone.cool_set is not None else {})
+                        }
+                        for zone in zones
                     ],
                 }
             ]
@@ -916,3 +964,10 @@ class DeviceImpl(Device):
             await self._client.post_device_set_powerful_time(
                 self.long_id, powerful_time
             )
+    
+    async def __set_special_status__(self, special_status: SpecialStatus | None, zones: list[ZoneTemperatureSetUpdate]) -> None:
+        """Set the special status.
+        :param special_status: Special status to set
+        :param zones: Zones to set the special status for
+        """
+        await self._client.post_device_set_special_status(self.long_id, special_status, zones)
