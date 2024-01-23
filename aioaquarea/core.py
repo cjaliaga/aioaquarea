@@ -357,7 +357,7 @@ class Client:
             "GET",
             f"{AQUAREA_SERVICE_DEVICES}/{long_id}",
             referer=self._base_url,
-            data=urllib.parse.urlencode(params),
+            params=params,
         )
         data = await response.json()
 
@@ -569,7 +569,7 @@ class Client:
         self,
         long_id: str,
         special_status: SpecialStatus | None,
-        zones: list[ZoneTemperatureSetUpdate]
+        zones: list[ZoneTemperatureSetUpdate],
     ) -> None:
         """Post device operation update."""
         data = {
@@ -581,7 +581,11 @@ class Client:
                         {
                             "zoneId": zone.zone_id,
                             "heatSet": zone.heat_set,
-                            **({"coolSet": zone.cool_set} if zone.cool_set is not None else {})
+                            **(
+                                {"coolSet": zone.cool_set}
+                                if zone.cool_set is not None
+                                else {}
+                            ),
                         }
                         for zone in zones
                     ],
@@ -964,10 +968,16 @@ class DeviceImpl(Device):
             await self._client.post_device_set_powerful_time(
                 self.long_id, powerful_time
             )
-    
-    async def __set_special_status__(self, special_status: SpecialStatus | None, zones: list[ZoneTemperatureSetUpdate]) -> None:
+
+    async def __set_special_status__(
+        self,
+        special_status: SpecialStatus | None,
+        zones: list[ZoneTemperatureSetUpdate],
+    ) -> None:
         """Set the special status.
         :param special_status: Special status to set
         :param zones: Zones to set the special status for
         """
-        await self._client.post_device_set_special_status(self.long_id, special_status, zones)
+        await self._client.post_device_set_special_status(
+            self.long_id, special_status, zones
+        )
