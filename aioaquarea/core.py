@@ -18,6 +18,7 @@ from .const import (
     AQUAREA_SERVICE_DEMO_BASE,
     AQUAREA_SERVICE_DEVICES,
     AQUAREA_SERVICE_LOGIN,
+    AQUAREA_SERVICE_AUTH_CLIENT_ID,
     AquareaEnvironment,
 )
 from .data import (
@@ -184,7 +185,8 @@ class Client:
     async def request(
         self,
         method: str,
-        url: str,
+        url: str = None,
+        external_url: str = None,
         referer: str = AQUAREA_SERVICE_BASE,
         throw_on_error=True,
         content_type: str = "application/x-www-form-urlencoded",
@@ -199,7 +201,12 @@ class Client:
         headers["content-type"] = content_type
         kwargs["headers"] = headers
 
-        resp = await self._sess.request(method, self._base_url + url, **kwargs)
+        if external_url is not None:
+            url = external_url
+        else:
+            url = self._base_url + url 
+
+        resp = await self._sess.request(method, url, **kwargs)
 
         # Aquarea returns a 200 even if the request failed, we need to check the message property to see if it's an error
         # Some errors just require to login again, so we raise a AuthenticationError in those known cases
@@ -267,9 +274,48 @@ class Client:
             "POST",
             AQUAREA_SERVICE_LOGIN,
             referer=self._base_url,
-            data=urllib.parse.urlencode(params),
+            headers={
+                "popup-screen-id": "1001",
+                "Registration-Id": "",
+            }
+            # data=urllib.parse.urlencode(params),
         )
 
+        auth_state = response.cookies.get("com.auth0.state").value
+        query_params = {
+            "client_id": AQUAREA_SERVICE_AUTH_CLIENT_ID,
+            "audience": f"https://digital.panasonic.com/{AQUAREA_SERVICE_AUTH_CLIENT_ID}/api/v1/",
+            "response_type": "code",
+            "redirect_uri": "https://aquarea-smart.panasonic.com/authorizationCallback",
+            "state": auth_state,
+            "scope": "openid offline_access",
+        }
+
+        response: aiohttp.ClientResponse = await self.request(
+            "GET",
+            external_url="https://authglb.digital.panasonic.com/authorize",
+            referer=self._base_url,
+            params=query_params,
+            allow_redirects=False)
+
+        auth0_compat = response.cookies.get("auth0_compat").value
+        auth0 = response.cookies.get("auth0").value
+        did = response.cookies.get("did").value
+        did_compat = response.cookies.get("did_compat").value
+
+        location = response.headers.get("Location")
+        parsed_url = urllib.parse.urlparse(location)
+
+        # Extract the value of the 'state' query parameter
+        query_params = urllib.parse.parse_qs(parsed_url.query)
+        state_value = query_params.get('state', [None])[0]
+
+        response: aiohttp.ClientResponse = await self.request(
+            "GET",
+            external_url=f"https://authglb.digital.panasonic.com{location}",
+            referer=self._base_url,
+            allow_redirects=False)
+        
         data = await response.json()
 
         if not isinstance(data, dict):
