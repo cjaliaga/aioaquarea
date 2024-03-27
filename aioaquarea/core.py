@@ -344,7 +344,7 @@ class Client:
             'connection':'PanasonicID-Authentication',
         }
 
-        self._sess._cookie_jar.update_cookies({"_csrf":csrf}, URL("https://authglb.digital.panasonic.com/usernamepassword/login"))
+        self._sess._cookie_jar.update_cookies({"_csrf":csrf}, response.url)
 
         response: aiohttp.ClientResponse = await self.request(
             "POST",
