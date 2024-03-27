@@ -307,16 +307,55 @@ class Client:
         parsed_url = urllib.parse.urlparse(location)
 
         # Extract the value of the 'state' query parameter
-        query_params = urllib.parse.parse_qs(parsed_url.query)
-        state_value = query_params.get('state', [None])[0]
+        query_params2 = urllib.parse.parse_qs(parsed_url.query)
+        state_value = query_params2.get('state', [None])[0]
 
         response: aiohttp.ClientResponse = await self.request(
             "GET",
             external_url=f"https://authglb.digital.panasonic.com{location}",
             referer=self._base_url,
             allow_redirects=False)
-        
-        data = await response.json()
+
+        csrf = response.cookies.get("_csrf").value
+
+        query_params = {
+            "audience": f"https://digital.panasonic.com/{AQUAREA_SERVICE_AUTH_CLIENT_ID}/api/v1/",
+            "client": AQUAREA_SERVICE_AUTH_CLIENT_ID,
+            'protocol': 'oauth2',
+            'redirect_uri': 'https://aquarea-smart.panasonic.com/authorizationCallback',
+            "response_type": "code",
+            "state": state_value,
+            "scope": "openid offline_access",
+        }
+
+        data = {
+            "client_id" : AQUAREA_SERVICE_AUTH_CLIENT_ID,
+            "redirect_uri":"https://aquarea-smart.panasonic.com/authorizationCallback?lang=en",
+            'tenant':'pdpauthglb-a1',
+            'response_type':'code',
+            'scope':'openid offline_access',
+            'audience':f"https://digital.panasonic.com/{AQUAREA_SERVICE_AUTH_CLIENT_ID}/api/v1/",
+            '_csrf':csrf,
+            'state':state_value,
+            '_intstate':'deprecated',
+            "username": self._username,
+            "password": self._password,
+            'lang':'en',
+            'connection':'PanasonicID-Authentication',
+        }
+
+        self._sess._cookie_jar.update_cookies({"_csrf":csrf}, URL("https://authglb.digital.panasonic.com/usernamepassword/login"))
+
+        response: aiohttp.ClientResponse = await self.request(
+            "POST",
+            external_url="https://authglb.digital.panasonic.com/usernamepassword/login",
+            referer=f"https://authglb.digital.panasonic.com/login?{urllib.parse.urlencode(query_params)}",
+            headers={
+                "Auth0-Client": "eyJuYW1lIjoiYXV0aDAuanMtdWxwIiwidmVyc2lvbiI6IjkuMjMuMiJ9",
+                'Content-Type': 'application/json; charset=UTF-8'
+            },
+            allow_redirects=False,
+            json=data)
 
         if not isinstance(data, dict):
             raise InvalidData(data)
