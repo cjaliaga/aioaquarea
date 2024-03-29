@@ -391,6 +391,22 @@ class Client:
 
         location = response.headers.get("Location") 
 
+        response: aiohttp.ClientResponse = await self.request(
+            "GET",
+            external_url=f"https://authglb.digital.panasonic.com{location}",
+            referer=self._base_url,
+            allow_redirects=False)
+
+        location = response.headers.get("Location") 
+
+        response: aiohttp.ClientResponse = await self.request(
+            "GET",
+            external_url=location,
+            referer=self._base_url,
+            allow_redirects=False)
+        
+        access_token = response.cookies.get("accessToken").value
+
         if not isinstance(data, dict):
             raise InvalidData(data)
 
