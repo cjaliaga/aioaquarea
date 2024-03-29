@@ -177,6 +177,10 @@ class Client:
         if not self._access_token:
             return False
 
+        # We don't have an expiration time, so we assume the token is valid
+        if not self._token_expiration:
+            return True
+        
         now = dt.datetime.now(tz=dt.timezone.utc)
         return now < self._token_expiration
 
