@@ -149,6 +149,7 @@ class Client:
         self._device_direct = (
             device_direct if environment == AquareaEnvironment.PRODUCTION else False
         )
+        self._access_token: Optional[str] = None
 
     @property
     def username(self) -> str:
@@ -173,10 +174,10 @@ class Client:
     @property
     def is_logged(self) -> bool:
         """Return True if the user is logged in."""
-        if not self._token_expiration:
+        if not self._access_token:
             return False
 
-        now = dt.datetime.astimezone(dt.datetime.utcnow(), tz=dt.timezone.utc)
+        now = dt.datetime.now(tz=dt.timezone.utc)
         return now < self._token_expiration
 
     @property
@@ -210,29 +211,34 @@ class Client:
 
         resp = await self._sess.request(method, url, **kwargs)
 
-        # Aquarea returns a 200 even if the request failed, we need to check the message property to see if it's an error
-        # Some errors just require to login again, so we raise a AuthenticationError in those known cases
-        errors = [FaultError]
-        if throw_on_error:
-            errors = await self.look_for_errors(resp)
-            # If we have errors, let's look for authentication errors
-            for error in errors:
-                if error.error_code in list(AuthenticationErrorCodes):
-                    raise AuthenticationError(error.error_code, error.error_message)
+        if resp.content_type == "application/json":
+            data = await resp.json()
 
-                raise ApiError(error.error_code, error.error_message)
+            # let's check for access token and expiration time
+            if self._access_token and "accessToken" in data:
+                self._access_token = data["accessToken"]["token"]
+                self._token_expiration = dt.datetime.strptime(
+                    data["accessToken"]["expires"], "%Y-%m-%dT%H:%M:%S%z"
+                )
+
+            # Aquarea returns a 200 even if the request failed, we need to check the message property to see if it's an error
+            # Some errors just require to login again, so we raise a AuthenticationError in those known cases
+            errors = [FaultError]
+            if throw_on_error:
+                errors = await self.look_for_errors(data)
+                # If we have errors, let's look for authentication errors
+                for error in errors:
+                    if error.error_code in list(AuthenticationErrorCodes):
+                        raise AuthenticationError(error.error_code, error.error_message)
+
+                    raise ApiError(error.error_code, error.error_message)
 
         return resp
 
     async def look_for_errors(
-        self, response: aiohttp.ClientResponse
+        self, data: dict
     ) -> list[FaultError]:
         """Look for errors in the response and return them as a list of FaultError objects."""
-        if response.content_type != "application/json":
-            return []
-
-        data = await response.json()
-
         if not isinstance(data, dict):
             return []
 
@@ -266,12 +272,6 @@ class Client:
         ) + dt.timedelta(days=1)
 
     async def _login_production(self) -> None:
-        params = {
-            "var.inputOmit": "false",
-            "var.loginId": self.username,
-            "var.password": self.password,
-        }
-
         response: aiohttp.ClientResponse = await self.request(
             "POST",
             AQUAREA_SERVICE_LOGIN,
@@ -280,7 +280,6 @@ class Client:
                 "popup-screen-id": "1001",
                 "Registration-Id": "",
             }
-            # data=urllib.parse.urlencode(params),
         )
 
         auth_state = response.cookies.get("com.auth0.state").value
@@ -299,11 +298,6 @@ class Client:
             referer=self._base_url,
             params=query_params,
             allow_redirects=False)
-
-        auth0_compat = response.cookies.get("auth0_compat").value
-        auth0 = response.cookies.get("auth0").value
-        did = response.cookies.get("did").value
-        did_compat = response.cookies.get("did_compat").value
 
         location = response.headers.get("Location")
         parsed_url = urllib.parse.urlparse(location)
@@ -346,20 +340,22 @@ class Client:
             'connection':'PanasonicID-Authentication',
         }
 
-        # self._sess._cookie_jar.update_cookies({"_csrf":csrf}, response.url)
-
         response: aiohttp.ClientResponse = await self.request(
             "POST",
             external_url="https://authglb.digital.panasonic.com/usernamepassword/login",
             referer=f"https://authglb.digital.panasonic.com/login?{urllib.parse.urlencode(query_params)}",
             content_type="application/json; charset=UTF-8",
             headers={
-                "Auth0-Client": "eyJuYW1lIjoiYXV0aDAuanMtdWxwIiwidmVyc2lvbiI6IjkuMjMuMiJ9",
-                # 'Content-Type': 'application/json; charset=UTF-8',
-                # 'Cookie': f'auth0_compat={auth0_compat}; auth0={auth0}; did={did}; did_compat={did_compat}; _csrf={csrf}',
+                "Auth0-Client": "eyJuYW1lIjoiYXV0aDAuanMtdWxwIiwidmVyc2lvbiI6IjkuMjMuMiJ9"
             },
             allow_redirects=False,
-            json=data)
+            json=data,
+            throw_on_error=False)
+
+        if not response.ok and response.content_type == "application/json":
+            data = await response.json()
+            if data.get("code") == "invalid_user_password":
+                raise AuthenticationError(AuthenticationErrorCodes.INVALID_USERNAME_OR_PASSWORD, "Invalid username or password")
 
         content = await response.text()
         action_url = re.search(r'action="(.+?)"', content).group(1)
@@ -382,10 +378,6 @@ class Client:
             external_url=action_url,
             referer=f"https://authglb.digital.panasonic.com/login?{urllib.parse.urlencode(query_params)}",
             content_type="application/x-www-form-urlencoded; charset=UTF-8",
-            headers={
-                # "Auth0-Client": "eyJuYW1lIjoiYXV0aDAuanMtdWxwIiwidmVyc2lvbiI6IjkuMjMuMiJ9",
-                # 'Cookie': f'auth0_compat={auth0_compat}; auth0={auth0}; did={did}; did_compat={did_compat}; _csrf={csrf}',
-            },
             allow_redirects=False,
             data=urllib.parse.urlencode(form_data))
 
@@ -405,14 +397,8 @@ class Client:
             referer=self._base_url,
             allow_redirects=False)
         
-        access_token = response.cookies.get("accessToken").value
-
-        if not isinstance(data, dict):
-            raise InvalidData(data)
-
-        self._token_expiration = dt.datetime.strptime(
-            data["accessToken"]["expires"], "%Y-%m-%dT%H:%M:%S%z"
-        )
+        self._access_token = response.cookies.get("accessToken").value
+        self._token_expiration = None
 
         self._logger.info(
             f"Login successful for {self.username}. Access Token Expiration: {self._token_expiration}"
