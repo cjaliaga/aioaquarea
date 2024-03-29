@@ -5,8 +5,10 @@ import asyncio
 import datetime as dt
 import functools
 import logging
+import re
 from typing import Optional
 import urllib.parse
+import html
 
 import aiohttp
 
@@ -325,37 +327,69 @@ class Client:
             'redirect_uri': 'https://aquarea-smart.panasonic.com/authorizationCallback',
             "response_type": "code",
             "state": state_value,
-            "scope": "openid offline_access",
+            "scope": "openid offline_access",            
         }
 
         data = {
-            "client_id" : AQUAREA_SERVICE_AUTH_CLIENT_ID,
-            "redirect_uri":"https://aquarea-smart.panasonic.com/authorizationCallback?lang=en",
+            'client_id' : AQUAREA_SERVICE_AUTH_CLIENT_ID,
+            'redirect_uri':'https://aquarea-smart.panasonic.com/authorizationCallback?lang=en',
             'tenant':'pdpauthglb-a1',
             'response_type':'code',
             'scope':'openid offline_access',
-            'audience':f"https://digital.panasonic.com/{AQUAREA_SERVICE_AUTH_CLIENT_ID}/api/v1/",
+            'audience':f'https://digital.panasonic.com/{AQUAREA_SERVICE_AUTH_CLIENT_ID}/api/v1/',
             '_csrf':csrf,
             'state':state_value,
             '_intstate':'deprecated',
-            "username": self._username,
-            "password": self._password,
+            'username': self._username,
+            'password': self._password,
             'lang':'en',
             'connection':'PanasonicID-Authentication',
         }
 
-        self._sess._cookie_jar.update_cookies({"_csrf":csrf}, response.url)
+        # self._sess._cookie_jar.update_cookies({"_csrf":csrf}, response.url)
 
         response: aiohttp.ClientResponse = await self.request(
             "POST",
             external_url="https://authglb.digital.panasonic.com/usernamepassword/login",
             referer=f"https://authglb.digital.panasonic.com/login?{urllib.parse.urlencode(query_params)}",
+            content_type="application/json; charset=UTF-8",
             headers={
                 "Auth0-Client": "eyJuYW1lIjoiYXV0aDAuanMtdWxwIiwidmVyc2lvbiI6IjkuMjMuMiJ9",
-                'Content-Type': 'application/json; charset=UTF-8'
+                # 'Content-Type': 'application/json; charset=UTF-8',
+                # 'Cookie': f'auth0_compat={auth0_compat}; auth0={auth0}; did={did}; did_compat={did_compat}; _csrf={csrf}',
             },
             allow_redirects=False,
             json=data)
+
+        content = await response.text()
+        action_url = re.search(r'action="(.+?)"', content).group(1)
+        inputs = re.findall(r'<input([^\0]+?)>', content, flags=re.IGNORECASE)
+
+        form_data = {}
+        for input in inputs:
+            name = None
+            value = None
+            name_match = re.search(r'name="(.+?)"', input)
+            if name_match is not None:
+                name = name_match.group(1)
+            value = re.search(r'value="(.+?)"', input)
+            if(name and value):
+                form_data[name] = html.unescape(value.group(1))
+
+
+        response: aiohttp.ClientResponse = await self.request(
+            "POST",
+            external_url=action_url,
+            referer=f"https://authglb.digital.panasonic.com/login?{urllib.parse.urlencode(query_params)}",
+            content_type="application/x-www-form-urlencoded; charset=UTF-8",
+            headers={
+                # "Auth0-Client": "eyJuYW1lIjoiYXV0aDAuanMtdWxwIiwidmVyc2lvbiI6IjkuMjMuMiJ9",
+                # 'Cookie': f'auth0_compat={auth0_compat}; auth0={auth0}; did={did}; did_compat={did_compat}; _csrf={csrf}',
+            },
+            allow_redirects=False,
+            data=urllib.parse.urlencode(form_data))
+
+        location = response.headers.get("Location") 
 
         if not isinstance(data, dict):
             raise InvalidData(data)
