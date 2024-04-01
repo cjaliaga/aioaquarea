@@ -14,6 +14,7 @@ import aiohttp
 
 from .const import (
     AQUAREA_SERVICE_A2W_STATUS_DISPLAY,
+    AQUAREA_SERVICE_AUTH0_CLIENT,
     AQUAREA_SERVICE_BASE,
     AQUAREA_SERVICE_CONSUMPTION,
     AQUAREA_SERVICE_CONTRACT,
@@ -219,7 +220,7 @@ class Client:
             data = await resp.json()
 
             # let's check for access token and expiration time
-            if self._access_token and "accessToken" in data:
+            if self._access_token and self.__contains_valid_token(data):
                 self._access_token = data["accessToken"]["token"]
                 self._token_expiration = dt.datetime.strptime(
                     data["accessToken"]["expires"], "%Y-%m-%dT%H:%M:%S%z"
@@ -238,6 +239,14 @@ class Client:
                     raise ApiError(error.error_code, error.error_message)
 
         return resp
+
+    def __contains_valid_token(self, data: dict) -> bool:
+        """Check if the data contains a valid token."""
+        return (
+            "accessToken" in data
+            and "token" in data["accessToken"]
+            and "expires" in data["accessToken"]
+        )
 
     async def look_for_errors(
         self, data: dict
@@ -260,22 +269,22 @@ class Client:
                 return
 
             if self._environment is AquareaEnvironment.DEMO:
-                await self._login_demo()
+                await self.__login_demo()
             else:
-                await self._login_production()
-
+                await self.__login_production()
+                
             self._last_login = dt.datetime.now()
 
         finally:
             self._login_lock.release()
 
-    async def _login_demo(self) -> None:
+    async def __login_demo(self) -> None:
         _ = await self.request("GET", "", referer=self._base_url)
         self._token_expiration = dt.datetime.astimezone(
             dt.datetime.utcnow(), tz=dt.timezone.utc
         ) + dt.timedelta(days=1)
 
-    async def _login_production(self) -> None:
+    async def __login_production(self) -> None:
         response: aiohttp.ClientResponse = await self.request(
             "POST",
             AQUAREA_SERVICE_LOGIN,
@@ -304,6 +313,12 @@ class Client:
             allow_redirects=False)
 
         location = response.headers.get("Location")
+
+        # We might be already on the last step of the login process if we're refreshing the token
+        if self.__is_final_step(location):
+            return await self.__complete_login(location)
+        
+        # We continue with the login process
         parsed_url = urllib.parse.urlparse(location)
 
         # Extract the value of the 'state' query parameter
@@ -350,7 +365,7 @@ class Client:
             referer=f"https://authglb.digital.panasonic.com/login?{urllib.parse.urlencode(query_params)}",
             content_type="application/json; charset=UTF-8",
             headers={
-                "Auth0-Client": "eyJuYW1lIjoiYXV0aDAuanMtdWxwIiwidmVyc2lvbiI6IjkuMjMuMiJ9"
+                "Auth0-Client": AQUAREA_SERVICE_AUTH0_CLIENT,
             },
             allow_redirects=False,
             json=data,
@@ -395,6 +410,14 @@ class Client:
 
         location = response.headers.get("Location") 
 
+        if self.__is_final_step(location):
+            return await self.__complete_login(location)
+        
+        raise AuthenticationError(AuthenticationErrorCodes.INVALID_USERNAME_OR_PASSWORD, "Invalid username or password")
+
+    async def __complete_login(self, location: str) -> None:
+        """Complete the login process."""
+        
         response: aiohttp.ClientResponse = await self.request(
             "GET",
             external_url=location,
@@ -407,6 +430,11 @@ class Client:
         self._logger.info(
             f"Login successful for {self.username}. Access Token Expiration: {self._token_expiration}"
         )
+
+    def __is_final_step(self, location: str) -> bool:
+        """Check if the location is the final step of the login process."""
+        parsed = urllib.parse.urlparse(location)
+        return parsed.hostname == "aquarea-smart.panasonic.com" and parsed.path == "/authorizationCallback" and "code" in urllib.parse.parse_qs(parsed.query)
 
     @auth_required
     async def get_devices(self, include_long_id=False) -> list[DeviceInfo]:
