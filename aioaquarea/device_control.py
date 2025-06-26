@@ -230,10 +230,7 @@ class AquareaDeviceControl:
         response = await self._api_client.request(
             "POST",
             "/remote/v1/app/common/transfer",
-            headers=PanasonicRequestHeader.get_aqua_headers(
-            content_type="application/json",
-            referer=f"{self._base_url}{AQUAREA_SERVICE_A2W_STATUS_DISPLAY}"
-            ),
+            headers={},
             json=data,
         )
         print(response)

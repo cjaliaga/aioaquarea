@@ -99,16 +99,27 @@ class PanasonicRequestHeader:
         return headers
     
     @staticmethod
-    def get_aqua_headers(content_type: str = "application/x-www-form-urlencoded", referer:str = "https://aquarea-smart.panasonic.com/"):
-        headers={
-                "Cache-Control": "max-age=0",
-                "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8",
-                "Accept-Encoding": "deflate, br",
-                "Upgrade-Insecure-Requests": "1",
-                "User-Agent": AUTH_BROWSER_USER_AGENT,
-                "content-type": content_type,
-                "referer": referer
-            }
+    def get_aqua_headers(
+        content_type: str = "application/x-www-form-urlencoded",
+        referer: str = "https://aquarea-smart.panasonic.com/",
+        user_agent: str = AUTH_BROWSER_USER_AGENT,
+        accept: str | None = None,
+    ):
+        if accept is None:
+            if content_type == "application/json":
+                accept = "application/json"
+            else:
+                accept = "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8"
+
+        headers = {
+            "Cache-Control": "max-age=0",
+            "Accept": accept,
+            "Accept-Encoding": "deflate, br",
+            "Upgrade-Insecure-Requests": "1",
+            "User-Agent": user_agent,
+            "content-type": content_type,
+            "referer": referer,
+        }
         return headers
         
     @staticmethod
