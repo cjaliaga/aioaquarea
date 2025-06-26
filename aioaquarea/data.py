@@ -10,10 +10,7 @@ from .const import PANASONIC
 from .statistics import Consumption, ConsumptionType
 from .util import LimitedSizeDict, limit_range
 
-try:
-    from enum import StrEnum
-except ImportError:
-    from strenum import StrEnum
+from enum import StrEnum
 
 
 class ZoneSensor(StrEnum):
