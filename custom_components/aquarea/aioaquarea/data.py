@@ -537,14 +537,20 @@ class Device(ABC):
     _zones: dict[int, DeviceZone] = {}
 
     def __init__(self, info: DeviceInfo, status: DeviceStatus) -> None:
-        self._info = info
+        self.device_id = info.device_id
+        self.long_id = info.long_id
+        self.device_name = info.name
+        self.firmware_version = info.firmware_version
+        self.model = info.model
+        self.manufacturer = PANASONIC
+        self.has_tank = info.has_tank
         self._status = status
         self._tank: Tank | None = None
         self._consumption: dict[datetime, Consumption] = LimitedSizeDict(5)
-        self.__build_zones__()
+        self.__build_zones__(info.zones)
 
-    def __build_zones__(self) -> None:
-        for zone in self._info.zones:
+    def __build_zones__(self, zones_info: list[DeviceZoneInfo]) -> None:
+        for zone in zones_info:
             zone_id = zone.zone_id
             # pylint: disable=cell-var-from-loop
             zone_status = next(
@@ -557,34 +563,9 @@ class Device(ABC):
         """Refresh device data"""
 
     @property
-    def device_id(self) -> str:
-        """The device id"""
-        return self._info.device_id
-
-    @property
-    def long_id(self) -> str:
-        """The long id of the device"""
-        return self._info.long_id
-
-    @property
-    def name(self) -> str:
-        """The name of the device"""
-        return self._info.name
-
-    @property
     def mode(self) -> ExtendedOperationMode:
         """The operation mode of the device"""
         return self._status.operation_mode
-
-    @property
-    def version(self) -> str:
-        """The firmware version of the device"""
-        return self._info.firmware_version
-
-    @property
-    def manufacturer(self) -> str:
-        """The manufacturer of the device"""
-        return PANASONIC
 
     @property
     def temperature_outdoor(self) -> int:

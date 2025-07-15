@@ -1,12 +1,12 @@
 """Support for Panasonic Aquarea switches."""
 import logging
 
-import aioaquarea
 from homeassistant.components.switch import SwitchEntity
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
+from .aioaquarea import ForceDHW, ForceHeater, HolidayTimer # Explicit import
 from . import AquareaBaseEntity
 from .const import DEVICES, DOMAIN
 from .coordinator import AquareaDataUpdateCoordinator

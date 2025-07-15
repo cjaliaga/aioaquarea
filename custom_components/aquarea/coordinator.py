@@ -2,13 +2,16 @@
 from __future__ import annotations
 from datetime import timedelta
 import logging
-import aioaquarea
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import CONF_USERNAME
 from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import ConfigEntryAuthFailed
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 from homeassistant.util import dt as dt_util
+
+from .aioaquarea import AquareaClient, AuthenticationError, AuthenticationErrorCodes, Device # Explicit import
+from .aioaquarea.data import DeviceInfo # Explicit import
+from .aioaquarea.errors import RequestFailedError # Explicit import
 from .const import DOMAIN
 
 DEFAULT_SCAN_INTERVAL_SECONDS = 10

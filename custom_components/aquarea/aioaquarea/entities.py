@@ -36,13 +36,13 @@ class TankImpl(Tank):
         self._client = client
 
     async def __set_target_temperature__(self, value: int) -> None:
-        await self._client.post_device_tank_temperature(self._device.long_id, value)
+        await self._client.post_device_tank_temperature(self._device.device_id, value)
 
     async def __set_operation_status__(
         self, status: OperationStatus, device_status: OperationStatus
     ) -> None:
         await self._client.post_device_tank_operation_status(
-            self._device.long_id, status, device_status
+            self._device.device_id, status, device_status
         )
 
 
@@ -51,13 +51,19 @@ class DeviceImpl(Device):
 
     def __init__(
         self,
-        info: DeviceInfo,
+        device_id: str,
+        long_id: str,
+        name: str,
+        firmware_version: str,
+        model: str,
+        has_tank: bool,
+        zones_info: list[DeviceInfo],
         status: DeviceStatus,
         client: "AquareaClient", # Updated type hint to string literal
         consumption_refresh_interval: Optional[dt.timedelta] = None,
         timezone: dt.timezone = dt.timezone.utc,
     ) -> None:
-        super().__init__(info, status)
+        super().__init__(device_id, long_id, name, firmware_version, model, has_tank, zones_info, status)
         self._client = client
         self._timezone = timezone
         self._last_consumption_refresh: dt.datetime | None = None
@@ -68,12 +74,12 @@ class DeviceImpl(Device):
             self._tank = TankImpl(self._status.tank_status[0], self, self._client)
 
     async def refresh_data(self) -> None:
-        self._status = await self._client.get_device_status(self._info.long_id)
+        self._status = await self._client.get_device_status(self.device_id)
 
         if self.has_tank:
             self._tank = TankImpl(self._status.tank_status[0], self, self._client)
 
-        self.__build_zones__()
+        self.__build_zones__(self.zones_info) # Pass zones_info to __build_zones__
 
         if self._consumption:
             await self.__refresh_consumption__()

@@ -4,7 +4,7 @@ from dataclasses import dataclass
 from datetime import datetime, timedelta
 import logging
 from typing import Any, Self
-from aioaquarea import ConsumptionType, DataNotAvailableError
+from .aioaquarea import ConsumptionType, DataNotAvailableError
 from homeassistant.components.sensor import (
     SensorDeviceClass,
     SensorEntity,

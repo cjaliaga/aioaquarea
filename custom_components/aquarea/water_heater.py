@@ -1,7 +1,7 @@
 """Defines the water heater entity to control the Aquarea water tank."""
 from __future__ import annotations
 import logging
-from aioaquarea.data import DeviceAction, OperationStatus
+from .aioaquarea.data import DeviceAction, OperationStatus
 from homeassistant.components.water_heater import (
     STATE_HEAT_PUMP,
     WaterHeaterEntity,

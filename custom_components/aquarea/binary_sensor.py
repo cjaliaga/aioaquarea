@@ -1,6 +1,5 @@
 """Binary sensors for the Aquarea integration."""
 import logging
-import aioaquarea
 from homeassistant.components.binary_sensor import (
     BinarySensorDeviceClass,
     BinarySensorEntity,
@@ -9,6 +8,8 @@ from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity import EntityCategory
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
+
+from .aioaquarea import DeviceModeStatus # Explicit import
 from . import AquareaBaseEntity
 from .const import DEVICES, DOMAIN
 from .coordinator import AquareaDataUpdateCoordinator

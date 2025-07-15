@@ -1,10 +1,11 @@
 """Select entities for Aquarea integration."""
 import logging
-import aioaquarea
 from homeassistant.components.select import SelectEntity
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
+
+from .aioaquarea import PowerfulTime, QuietMode # Explicit import
 from . import AquareaBaseEntity
 from .const import DEVICES, DOMAIN
 from .coordinator import AquareaDataUpdateCoordinator
@@ -12,18 +13,18 @@ from .coordinator import AquareaDataUpdateCoordinator
 _LOGGER = logging.getLogger(__name__)
 
 QUIET_MODE_LOOKUP = {
-    "level1" : aioaquarea.QuietMode.LEVEL1,
-    "level2" : aioaquarea.QuietMode.LEVEL2,
-    "level3" : aioaquarea.QuietMode.LEVEL3,
-    "off" : aioaquarea.QuietMode.OFF
+    "level1" : QuietMode.LEVEL1,
+    "level2" : QuietMode.LEVEL2,
+    "level3" : QuietMode.LEVEL3,
+    "off" : QuietMode.OFF
 }
 QUIET_MODE_REVERSE_LOOKUP = {v: k for k, v in QUIET_MODE_LOOKUP.items()}
 
 POWERFUL_TIME_LOOKUP = {
-    "on-30m" : aioaquarea.PowerfulTime.ON_30MIN,
-    "on-60m" : aioaquarea.PowerfulTime.ON_60MIN,
-    "on-90m" : aioaquarea.PowerfulTime.ON_90MIN,
-    "off" : aioaquarea.PowerfulTime.OFF
+    "on-30m" : PowerfulTime.ON_30MIN,
+    "on-60m" : PowerfulTime.ON_60MIN,
+    "on-90m" : PowerfulTime.ON_90MIN,
+    "off" : PowerfulTime.OFF
 }
 POWERFUL_TIME_REVERSE_LOOKUP = {v: k for k, v in POWERFUL_TIME_LOOKUP.items()}
 

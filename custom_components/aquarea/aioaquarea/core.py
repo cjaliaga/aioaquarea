@@ -193,9 +193,16 @@ class AquareaClient: # Renamed Client to AquareaClient
                 filter(lambda d: d.device_id == device_id, devices), None
             )
 
+        device_status = await self.get_device_status(device_info)
         return DeviceImpl(
-            device_info,
-            await self.get_device_status(device_info),
+            device_info.device_id,
+            device_info.long_id,
+            device_info.name,
+            device_info.firmware_version,
+            device_info.model,
+            device_info.has_tank,
+            device_info.zones,
+            device_status,
             self,
             consumption_refresh_interval,
             timezone,

@@ -1,10 +1,11 @@
 """Buttons for Aquarea integration."""
 import logging
-import aioaquarea
 from homeassistant.components.button import ButtonEntity
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
+
+from .aioaquarea import DeviceModeStatus # Explicit import
 from . import AquareaBaseEntity
 from .const import DEVICES, DOMAIN
 from .coordinator import AquareaDataUpdateCoordinator
