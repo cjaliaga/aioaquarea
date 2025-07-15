@@ -230,7 +230,7 @@ class OutdoorTemperatureSensor(AquareaBaseEntity, SensorEntity):
         _LOGGER.debug(
             "Updating sensor '%s' of %s",
             "outdoor_temperature",
-            self.coordinator.device.name,
+            self.coordinator.device.device_name,
         )
         self._attr_native_value = self.coordinator.device.temperature_outdoor
         super()._handle_coordinator_update()
@@ -299,7 +299,7 @@ class EnergyAccumulatedConsumptionSensor(
         _LOGGER.debug(
             "Updating sensor '%s' of %s",
             self.unique_id,
-            self.coordinator.device.name,
+            self.coordinator.device.device_name,
         )
         # we need to check the value for the current hour. If the device returns None means that we don't have yet data for the current hour. However the device might still update the previous hour data.
         device = self.coordinator.device
@@ -411,7 +411,7 @@ class EnergyConsumptionSensor(AquareaBaseEntity, SensorEntity, RestoreEntity):
         _LOGGER.debug(
             "Updating sensor '%s' of %s",
             self.unique_id,
-            self.coordinator.device.name,
+            self.coordinator.device.device_name,
         )
         # we need to check the value for the current hour. If the device returns None means that we don't have yet data for the current hour. However the device might still update the previous hour data.
         device = self.coordinator.device

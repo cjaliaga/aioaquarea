@@ -100,23 +100,22 @@ class HeatPumpClimate(AquareaBaseEntity, ClimateEntity):
     def __init__(self, coordinator: AquareaDataUpdateCoordinator, zone_id: int) -> None:
         """Initialize the climate entity."""
         super().__init__(coordinator)
-        device = coordinator.device
         self._zone_id = zone_id
         self._attr_temperature_unit = UnitOfTemperature.CELSIUS
-        self._attr_name = device.zones.get(zone_id).name
+        self._attr_name = self.coordinator.device.zones.get(zone_id).name
         self._attr_unique_id = f"{super().unique_id}_climate_{zone_id}"
         self._attr_supported_features = (
             ClimateEntityFeature.TARGET_TEMPERATURE | ClimateEntityFeature.TURN_ON | ClimateEntityFeature.TURN_OFF
         )
-        if device.support_special_status:
+        if self.coordinator.device.support_special_status:
             self._attr_supported_features |= ClimateEntityFeature.PRESET_MODE
             self._attr_preset_modes = list(SPECIAL_STATUS_LOOKUP.keys())
             self._attr_preset_mode = SPECIAL_STATUS_REVERSE_LOOKUP.get(
-                device.special_status
+                self.coordinator.device.special_status
             )
         self._attr_precision = PRECISION_WHOLE
         self._attr_hvac_modes = [HVACMode.HEAT, HVACMode.OFF]
-        if device.support_cooling(zone_id):
+        if self.coordinator.device.support_cooling(zone_id):
             self._attr_hvac_modes.extend([HVACMode.COOL, HVACMode.HEAT_COOL])
 
     @callback
@@ -143,15 +142,15 @@ class HeatPumpClimate(AquareaBaseEntity, ClimateEntity):
         self._attr_min_temp = zone.temperature
         if zone.supports_set_temperature and device.mode != ExtendedOperationMode.OFF:
             self._attr_max_temp = (
-                zone.cool_max if device.mode in (ExtendedOperationMode.COOL, ExtendedOperationMode.AUTO_COOL) else zone.heat_max
+                zone.cool_max if device.mode in (ExtendedOperationMode.COOL, ExtendedOperationMode.AUTO_COOL) else device.heat_max
             )
             self._attr_min_temp = (
-                zone.cool_min if device.mode in (ExtendedOperationMode.COOL, ExtendedOperationMode.AUTO_COOL) else zone.heat_min
+                zone.cool_min if device.mode in (ExtendedOperationMode.COOL, ExtendedOperationMode.AUTO_COOL) else device.heat_min
             )
         self._attr_target_temperature = (
             zone.cool_target_temperature if device.mode in (
                 ExtendedOperationMode.COOL, ExtendedOperationMode.AUTO_COOL,
-            ) else zone.heat_target_temperature
+            ) else device.heat_target_temperature
         )
         self._attr_target_temperature_step = 1
         super()._handle_coordinator_update()

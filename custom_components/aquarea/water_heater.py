@@ -100,7 +100,7 @@ class WaterHeater(AquareaBaseEntity, WaterHeaterEntity):
         if temperature is not None:
             _LOGGER.debug(
                 "Setting %s water tank temperature to %s",
-                self.coordinator.device.device_id,
+                self.coordinator.device.device_name,
                 str(temperature),
             )
             await self.coordinator.device.tank.set_target_temperature(int(temperature))
@@ -108,7 +108,7 @@ class WaterHeater(AquareaBaseEntity, WaterHeaterEntity):
     async def async_set_operation_mode(self, operation_mode):
         _LOGGER.debug(
             "Turning %s water tank %s",
-            self.coordinator.device.device_id,
+            self.coordinator.device.device_name,
             operation_mode,
         )
         if operation_mode == HEATING:
