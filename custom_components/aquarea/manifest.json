@@ -11,7 +11,7 @@
     "iot_class": "cloud_polling",
     "issue_tracker": "https://github.com/wpatrik14/aioaquarea/issues",
     "requirements": [
-        "aiohttp"
+        "aiohttp==3.12.14"
     ],
     "version": "1.0.1",
     "ssdp": [],
