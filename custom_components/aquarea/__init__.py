@@ -1,5 +1,6 @@
 """The Aquarea Smart Cloud integration."""
 from __future__ import annotations
+import logging # Added import
 from typing import Any
 
 from homeassistant.config_entries import ConfigEntry
