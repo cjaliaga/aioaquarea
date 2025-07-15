@@ -38,7 +38,7 @@ class AquareaDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Device]]):
             devices = {}
             for device_info in devices_info:
                 device = await self.client.get_device(device_info=device_info)
-                devices[device.info.long_id] = device
+                devices[device._info.long_id] = device
             return devices
         except AuthenticationError as err:
             raise ConfigEntryAuthFailed from err
