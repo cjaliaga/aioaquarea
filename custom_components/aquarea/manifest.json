@@ -5,7 +5,9 @@
         "@wpatrik14"
     ],
     "config_flow": true,
-    "dependencies": [],
+    "dependencies": [
+        "recorder"
+    ],
     "documentation": "https://github.com/wpatrik14/aioaquarea",
     "integration_type": "device",
     "iot_class": "cloud_polling",
