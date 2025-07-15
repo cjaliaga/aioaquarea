@@ -11,12 +11,32 @@ from .aioaquarea import Client, Device, AuthenticationError, ApiError
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import ConfigEntryAuthFailed, ConfigEntryNotReady
-from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
+from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed, CoordinatorEntity
 
 _LOGGER = logging.getLogger(__name__)
 
 DOMAIN = "aquarea"
-PLATFORMS: list[str] = ["climate", "sensor", "switch"]
+PLATFORMS: list[str] = ["climate", "sensor", "switch", "water_heater"]
+
+class AquareaBaseEntity(CoordinatorEntity[DataUpdateCoordinator]):
+    """Base entity for Aquarea integration."""
+
+    def __init__(self, coordinator: DataUpdateCoordinator, device: Device) -> None:
+        """Initialize the base entity."""
+        super().__init__(coordinator)
+        self._device = device
+        self._attr_device_info = {
+            "identifiers": {(DOMAIN, self._device._info.long_id)},
+            "name": self._device._info.name,
+            "manufacturer": self._device._info.manufacturer,
+            "model": "Aquarea Heat Pump", # Generic model name
+            "sw_version": self._device._info.firmware_version,
+        }
+
+    @property
+    def unique_id(self) -> str:
+        """Return a unique ID to use for this entity."""
+        return self._device._info.long_id
 
 class AquareaDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Device]]):
     """Class to manage fetching Aquarea data."""
