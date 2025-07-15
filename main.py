@@ -33,7 +33,7 @@ async def main():
         )
 
         # Then we can interact with the device:
-        await device.set_temperature(17, 1)
+        await device.set_temperature(18, 1)
 
         # The device can automatically refresh its data:
         #await device.refresh_data()

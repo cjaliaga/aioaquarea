@@ -84,7 +84,6 @@ class AquareaAPIClient:
         else:
             # If external_url is not provided, join the base_url with the given url
             url = urllib.parse.urljoin(self._base_url, url)
-        print(f"Requesting URL: {url} and kwargs: {kwargs}")  # Debugging line to check the URL
         resp = await self._sess.request(method, url, **kwargs)
 
         if resp.content_type == "application/json":

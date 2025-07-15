@@ -233,7 +233,6 @@ class AquareaDeviceControl:
             headers={},
             json=data,
         )
-        print(response)
 
     async def post_device_set_quiet_mode(self, long_id: str, mode: QuietMode) -> None:
         """Post quiet mode."""
