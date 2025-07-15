@@ -7,7 +7,7 @@ from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import CONF_PASSWORD, CONF_USERNAME, Platform
 from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import ConfigEntryAuthFailed, ConfigEntryNotReady
-from homeassistant.helpers.aiohttp_client import async_create_clientsession
+import aiohttp # Added import
 from homeassistant.helpers.entity import DeviceInfo
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
@@ -20,7 +20,7 @@ _LOGGER = logging.getLogger(__name__)
 def _create_client(hass: HomeAssistant, entry: ConfigEntry) -> Client: # Changed to Client
     username = entry.data.get(CONF_USERNAME)
     password = entry.data.get(CONF_PASSWORD)
-    session = async_create_clientsession(hass)
+    session = aiohttp.ClientSession() # Changed to aiohttp.ClientSession()
     return Client(session, username, password) # Changed to Client
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:

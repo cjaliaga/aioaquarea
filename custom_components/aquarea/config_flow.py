@@ -12,8 +12,8 @@ from homeassistant import config_entries
 from homeassistant.const import CONF_PASSWORD, CONF_USERNAME, Platform
 from homeassistant.data_entry_flow import FlowResult
 from homeassistant.exceptions import HomeAssistantError
-from homeassistant.helpers.aiohttp_client import async_create_clientsession
-
+from homeassistant.exceptions import HomeAssistantError
+# Removed async_create_clientsession import
 from .aioaquarea import Client, AuthenticationError, AuthenticationErrorCodes # Explicit import
 from .aioaquarea.errors import RequestFailedError # Explicit import
 from .const import DOMAIN
