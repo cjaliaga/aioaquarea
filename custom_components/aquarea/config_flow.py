@@ -14,7 +14,7 @@ from homeassistant.data_entry_flow import FlowResult
 from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers.aiohttp_client import async_create_clientsession
 
-from .aioaquarea import AquareaClient, AuthenticationError, AuthenticationErrorCodes # Explicit import
+from .aioaquarea import Client, AuthenticationError, AuthenticationErrorCodes # Explicit import
 from .aioaquarea.errors import RequestFailedError # Explicit import
 from .const import DOMAIN
 
@@ -36,7 +36,7 @@ class AquareaConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.info = {}
-        self._api: AquareaClient = None # Changed to AquareaClient
+        self._api: Client = None # Changed to Client
 
     async def async_step_user(
         self, user_input: dict[str, Any] | None = None

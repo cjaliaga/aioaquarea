@@ -11,17 +11,17 @@ from homeassistant.helpers.aiohttp_client import async_create_clientsession
 from homeassistant.helpers.entity import DeviceInfo
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
-from .aioaquarea import AquareaClient, AuthenticationError, ApiError, AuthenticationErrorCodes
+from .aioaquarea import Client, AuthenticationError, ApiError, AuthenticationErrorCodes # Changed to Client
 from .const import ATTRIBUTION, CLIENT, DEVICES, DOMAIN
 from .coordinator import AquareaDataUpdateCoordinator
 
 _LOGGER = logging.getLogger(__name__)
 
-def _create_client(hass: HomeAssistant, entry: ConfigEntry) -> AquareaClient:
+def _create_client(hass: HomeAssistant, entry: ConfigEntry) -> Client: # Changed to Client
     username = entry.data.get(CONF_USERNAME)
     password = entry.data.get(CONF_PASSWORD)
     session = async_create_clientsession(hass)
-    return AquareaClient(session, username, password)
+    return Client(session, username, password) # Changed to Client
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Set up Aquarea Smart Cloud from a config entry."""

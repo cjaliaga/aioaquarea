@@ -9,7 +9,7 @@ from homeassistant.exceptions import ConfigEntryAuthFailed
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 from homeassistant.util import dt as dt_util
 
-from .aioaquarea import AquareaClient, AuthenticationError, AuthenticationErrorCodes, Device # Explicit import
+from .aioaquarea import Client, AuthenticationError, AuthenticationErrorCodes, Device # Explicit import
 from .aioaquarea.data import DeviceInfo # Explicit import
 from .aioaquarea.errors import RequestFailedError # Explicit import
 from .const import DOMAIN
@@ -23,14 +23,14 @@ _LOGGER = logging.getLogger(__name__)
 
 class AquareaDataUpdateCoordinator(DataUpdateCoordinator):
     """Class to manage fetching Aquarea data."""
-    _device: aioaquarea.Device
+    _device: Device
 
     def __init__(
         self,
         hass: HomeAssistant,
         entry: ConfigEntry,
-        client: aioaquarea.Client,
-        device_info: aioaquarea.data.DeviceInfo,
+        client: Client, # Changed to Client
+        device_info: DeviceInfo, # Changed to DeviceInfo
     ) -> None:
         """Initialize a data updater per Device."""
         self._client = client
