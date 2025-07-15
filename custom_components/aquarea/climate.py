@@ -40,9 +40,7 @@ class AquareaClimate(CoordinatorEntity[AquareaDataUpdateCoordinator], ClimateEnt
 
     _attr_temperature_unit = UnitOfTemperature.CELSIUS
     _attr_hvac_modes = [HVACMode.HEAT, HVACMode.OFF] # Only heat and off for now
-    _attr_supported_features = (
-        ClimateEntityFeature.TARGET_TEMPERATURE | ClimateEntityFeature.HVAC_MODE
-    )
+    _attr_supported_features = ClimateEntityFeature.TARGET_TEMPERATURE
 
     def __init__(
         self,
