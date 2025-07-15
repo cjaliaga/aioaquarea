@@ -8,7 +8,7 @@ from typing import Optional
 
 import aiohttp
 
-from aioaquarea.statistics import Consumption, DateType
+from .statistics import Consumption, DateType
 
 from .const import (
     AQUAREA_SERVICE_BASE,
