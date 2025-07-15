@@ -4,7 +4,7 @@ from __future__ import annotations
 import logging
 from typing import Any
 
-from aioaquarea import Device, UpdateOperationMode
+from .aioaquarea import Device, UpdateOperationMode
 from homeassistant.components.climate import (
     ClimateEntity,
     ClimateEntityFeature,

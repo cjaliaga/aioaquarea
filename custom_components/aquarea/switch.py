@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from aioaquarea import Device, QuietMode, ForceDHW, ForceHeater
+from .aioaquarea import Device, QuietMode, ForceDHW, ForceHeater
 from homeassistant.components.switch import SwitchEntity
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant

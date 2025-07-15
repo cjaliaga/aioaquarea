@@ -6,7 +6,7 @@ import asyncio
 from datetime import timedelta
 
 import aiohttp
-from aioaquarea import Client, Device, AuthenticationError, ApiError
+from .aioaquarea import Client, Device, AuthenticationError, ApiError
 
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant

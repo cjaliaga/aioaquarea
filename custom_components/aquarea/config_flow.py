@@ -5,7 +5,7 @@ import logging
 from typing import Any
 
 import aiohttp
-from aioaquarea import Client, AuthenticationError, ApiError
+from .aioaquarea import Client, AuthenticationError, ApiError
 import voluptuous as vol
 
 from homeassistant import config_entries

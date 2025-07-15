@@ -2,7 +2,7 @@
     "domain": "aquarea",
     "name": "Panasonic Aquarea",
     "codeowners": [
-        "@your_github_username"
+        "@wpatrik14"
     ],
     "config_flow": true,
     "dependencies": [],
@@ -10,8 +10,7 @@
     "integration_type": "device",
     "iot_class": "cloud_polling",
     "issue_tracker": "https://github.com/cjaliaga/home-assistant-aquarea/issues",
-    "requirements": [
-        "aioaquarea==0.1.0"
-    ],
-    "version": "0.0.1"
+    "requirements": [],
+    "version": "1.0.0",
+    "hacs": "1.0.0"
 }
