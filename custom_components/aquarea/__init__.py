@@ -55,8 +55,17 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     session = aiohttp.ClientSession()
     client = Client(username=username, password=password, session=session)
 
-    coordinator = AquareaDataUpdateCoordinator(hass, client)
-    await coordinator.async_config_entry_first_refresh()
+    try:
+        coordinator = AquareaDataUpdateCoordinator(hass, client)
+        await coordinator.async_config_entry_first_refresh()
+    except (AuthenticationError, ApiError) as ex:
+        _LOGGER.error("Failed to set up Aquarea integration: %s", ex)
+        await session.close()
+        raise ConfigEntryAuthFailed from ex
+    except Exception as ex:
+        _LOGGER.error("Unexpected error during Aquarea setup: %s", ex)
+        await session.close()
+        raise ConfigEntryNotReady from ex
 
     hass.data.setdefault(DOMAIN, {})[entry.entry_id] = {
         "client": client,
