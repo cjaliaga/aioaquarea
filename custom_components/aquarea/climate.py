@@ -54,8 +54,8 @@ class AquareaClimate(CoordinatorEntity[AquareaDataUpdateCoordinator], ClimateEnt
         super().__init__(coordinator)
         self._device_id = device_id
         self._device = device
-        self._attr_name = f"Aquarea {device.info.name}"
-        self._attr_unique_id = f"{device.info.long_id}_climate"
+        self._attr_name = f"Aquarea {device._info.name}"
+        self._attr_unique_id = f"{device._info.long_id}_climate"
 
     @property
     def current_temperature(self) -> float | None:

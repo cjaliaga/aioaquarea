@@ -80,8 +80,8 @@ class AquareaSwitch(CoordinatorEntity[AquareaDataUpdateCoordinator], SwitchEntit
         self._switch_type = switch_type
         self._is_on_getter = is_on_getter
         self._setter = setter
-        self._attr_name = f"Aquarea {device.info.name} {name}"
-        self._attr_unique_id = f"{device.info.long_id}_{switch_type}"
+        self._attr_name = f"Aquarea {device._info.name} {name}"
+        self._attr_unique_id = f"{device._info.long_id}_{switch_type}"
 
     @property
     def is_on(self) -> bool | None:

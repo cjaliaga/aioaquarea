@@ -77,8 +77,8 @@ class AquareaSensor(CoordinatorEntity[AquareaDataUpdateCoordinator], SensorEntit
         self._device_id = device_id
         self._device = device
         self._sensor_type = sensor_type
-        self._attr_name = f"Aquarea {device.info.name} {name}"
-        self._attr_unique_id = f"{device.info.long_id}_{sensor_type}"
+        self._attr_name = f"Aquarea {device._info.name} {name}"
+        self._attr_unique_id = f"{device._info.long_id}_{sensor_type}"
         self._attr_native_unit_of_measurement = unit
         self._attr_device_class = device_class
         self._attr_state_class = state_class
