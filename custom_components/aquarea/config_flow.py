@@ -143,9 +143,10 @@ class AquareaConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             else:
                 errors["base"] = "unknown"
         except aioaquarea.errors.RequestFailedError:
+            _LOGGER.exception("Request failed during validation") # Added logging
             errors["base"] = "cannot_connect"
         except Exception:  # pylint: disable=broad-except
-            _LOGGER.exception("Unexpected exception")
+            _LOGGER.exception("Unexpected exception during validation") # Added logging
             errors["base"] = "unknown"
         return errors
 
