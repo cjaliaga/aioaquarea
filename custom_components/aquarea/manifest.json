@@ -6,11 +6,12 @@
     ],
     "config_flow": true,
     "dependencies": [],
-    "documentation": "https://github.com/cjaliaga/home-assistant-aquarea",
+    "documentation": "https://github.com/wpatrik14/aioaquarea",
     "integration_type": "device",
     "iot_class": "cloud_polling",
-    "issue_tracker": "https://github.com/cjaliaga/home-assistant-aquarea/issues",
+    "issue_tracker": "https://github.com/wpatrik14/aioaquarea/issues",
     "requirements": [],
     "version": "1.0.0",
-    "hacs": "1.0.0"
+    "ssdp": [],
+    "zeroconf": []
 }
