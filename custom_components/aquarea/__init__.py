@@ -67,30 +67,29 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
     return True # Assuming unload is always successful for now
 
-# Temporarily remove AquareaBaseEntity to isolate the issue
-# class AquareaBaseEntity(CoordinatorEntity[AquareaDataUpdateCoordinator]):
-#     """Common base for Aquarea entities."""
-#     coordinator: AquareaDataUpdateCoordinator
-#     _attr_attribution = ATTRIBUTION
-#     _attr_has_entity_name = True
+class AquareaBaseEntity(CoordinatorEntity[AquareaDataUpdateCoordinator]):
+    """Common base for Aquarea entities."""
+    coordinator: AquareaDataUpdateCoordinator
+    _attr_attribution = ATTRIBUTION
+    _attr_has_entity_name = True
 
-#     def __init__(self, coordinator: AquareaDataUpdateCoordinator) -> None:
-#         """Initialize entity."""
-#         super().__init__(coordinator)
-#         self._attrs: dict[str, Any] = {
-#             "name": self.coordinator.device.device_name,
-#             "id": self.coordinator.device.device_id,
-#         }
-#         self._attr_unique_id = self.coordinator.device.device_id
-#         self._attr_device_info = DeviceInfo(
-#             identifiers={(DOMAIN, self.coordinator.device.device_id)},
-#             manufacturer=self.coordinator.device.manufacturer,
-#             model=self.coordinator.device.model,
-#             name=self.coordinator.device.device_name,
-#             sw_version=self.coordinator.device.firmware_version,
-#         )
+    def __init__(self, coordinator: AquareaDataUpdateCoordinator) -> None:
+        """Initialize entity."""
+        super().__init__(coordinator)
+        self._attrs: dict[str, Any] = {
+            "name": self.coordinator.device.device_name,
+            "id": self.coordinator.device.device_id,
+        }
+        self._attr_unique_id = self.coordinator.device.device_id
+        self._attr_device_info = DeviceInfo(
+            identifiers={(DOMAIN, self.coordinator.device.device_id)},
+            manufacturer=self.coordinator.device.manufacturer,
+            model=self.coordinator.device.model,
+            name=self.coordinator.device.device_name,
+            sw_version=self.coordinator.device.firmware_version,
+        )
 
-#     async def async_added_to_hass(self) -> None:
-#         """When entity is added to hass."""
-#         await super().async_added_to_hass()
-#         self._handle_coordinator_update()
+    async def async_added_to_hass(self) -> None:
+        """When entity is added to hass."""
+        await super().async_added_to_hass()
+        self._handle_coordinator_update()
