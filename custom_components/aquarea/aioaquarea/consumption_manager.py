@@ -22,13 +22,24 @@ class AquareaConsumptionManager:
 
     async def get_device_consumption(
         self, long_id: str, aggregation: DateType, date_input: str
-    ) -> Consumption | None: # Changed return type to allow None
+    ) -> Consumption | None:
         """Get device consumption."""
         try:
+            payload = {
+                "apiName": "/remote/v1/api/consumption",
+                "requestMethod": "POST",
+                "bodyParam": {
+                    "gwid": long_id,
+                    "dataMode": int(aggregation.value),
+                    "date": date_input,
+                    "osTimezone": "+02:00", # Assuming a fixed timezone for now, might need to be dynamic
+                },
+            }
             response = await self._api_client.request(
-                "GET",
-                f"{AQUAREA_SERVICE_CONSUMPTION}/{long_id}?{aggregation}={date_input}",
-                headers=await PanasonicRequestHeader.get(self._api_client._settings, self._api_client._app_version),
+                "POST",
+                url="remote/v1/app/common/transfer",
+                json=payload,
+                throw_on_error=True,
             )
 
             date_data = await response.json()
@@ -41,7 +52,7 @@ class AquareaConsumptionManager:
                 aggregation,
                 ex,
             )
-            return None # Return None on error
+            return None
         except Exception as ex:
             _LOGGER.exception(
                 "An unexpected error occurred while getting consumption data for device %s, date %s, aggregation %s",
@@ -49,4 +60,4 @@ class AquareaConsumptionManager:
                 date_input,
                 aggregation,
             )
-            return None # Return None on unexpected error
+            return None

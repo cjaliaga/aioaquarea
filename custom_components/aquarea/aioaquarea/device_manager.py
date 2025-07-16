@@ -25,6 +25,7 @@ from .data import (
 from .auth import PanasonicSettings, CCAppVersion, PanasonicRequestHeader
 from .const import BASE_PATH_ACC
 from .api_client import AquareaAPIClient # Moved outside TYPE_CHECKING
+from .errors import RequestFailedError # Import RequestFailedError
 
 if TYPE_CHECKING:
     # from .core import Client as AquareaClient # No longer needed here
