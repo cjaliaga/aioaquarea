@@ -110,11 +110,11 @@ class DeviceImpl(Device):
                     # Check if the current temperature matches the expected temperature
                     # Use the correct target temperature based on the current mode
                     if self.mode in (ExtendedOperationMode.COOL, ExtendedOperationMode.AUTO_COOL):
-                        current_temp = zone.cool_target_temperature
-                        _LOGGER.debug(f"Device mode is COOL/AUTO_COOL. Checking cool_target_temperature.")
+                        current_temp = zone.cool_set
+                        _LOGGER.debug(f"Device mode is COOL/AUTO_COOL. Checking cool_set.")
                     else:
-                        current_temp = zone.heat_target_temperature
-                        _LOGGER.debug(f"Device mode is HEAT/AUTO_HEAT. Checking heat_target_temperature.")
+                        current_temp = zone.heat_set
+                        _LOGGER.debug(f"Device mode is HEAT/AUTO_HEAT. Checking heat_set.")
 
                     if current_temp == expected_temperature:
                         _LOGGER.debug(f"Temperature for zone {zone_id} matched expected {expected_temperature} after {i+1} retries. Exiting polling loop.")
