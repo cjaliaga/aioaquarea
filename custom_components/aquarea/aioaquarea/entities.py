@@ -91,7 +91,7 @@ class DeviceImpl(Device):
     async def refresh_data(self) -> None:
         self._status = await self._client.get_device_status(self._info) # Pass the DeviceInfo object
 
-        if self.has_tank:
+        if self.has_tank and self._status.tank_status: # Added check for non-empty tank_status
             self._tank = TankImpl(self._status.tank_status[0], self, self._client)
 
         # The __build_zones__ method is part of the base Device class and uses info.zones,

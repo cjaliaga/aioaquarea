@@ -51,15 +51,15 @@ class AquareaForceDHWSwitch(AquareaBaseEntity, SwitchEntity):
     @property
     def is_on(self) -> bool:
         """If force DHW mode is enabled."""
-        return self.coordinator.device.force_dhw is aioaquarea.ForceDHW.ON
+        return self.coordinator.device.force_dhw is ForceDHW.ON
 
     async def async_turn_on(self) -> None:
         """Turn on Force DHW."""
-        await self.coordinator.device.set_force_dhw(aioaquarea.ForceDHW.ON)
+        await self.coordinator.device.set_force_dhw(ForceDHW.ON)
 
     async def async_turn_off(self) -> None:
         """Turn off Force DHW."""
-        await self.coordinator.device.set_force_dhw(aioaquarea.ForceDHW.OFF)
+        await self.coordinator.device.set_force_dhw(ForceDHW.OFF)
 
 class AquareaForceHeaterSwitch(AquareaBaseEntity, SwitchEntity):
     """Representation of an Aquarea switch."""
@@ -78,15 +78,15 @@ class AquareaForceHeaterSwitch(AquareaBaseEntity, SwitchEntity):
     @property
     def is_on(self) -> bool:
         """If force heater mode is enabled."""
-        return self.coordinator.device.force_heater is aioaquarea.ForceHeater.ON
+        return self.coordinator.device.force_heater is ForceHeater.ON
 
     async def async_turn_on(self) -> None:
         """Turn on Force heater."""
-        await self.coordinator.device.set_force_heater(aioaquarea.ForceHeater.ON)
+        await self.coordinator.device.set_force_heater(ForceHeater.ON)
 
     async def async_turn_off(self) -> None:
         """Turn off Force heater."""
-        await self.coordinator.device.set_force_heater(aioaquarea.ForceHeater.OFF)
+        await self.coordinator.device.set_force_heater(ForceHeater.OFF)
 
 class AquareaHolidayTimerSwitch(AquareaBaseEntity, SwitchEntity):
     """Representation of an Aquarea switch."""
@@ -105,12 +105,12 @@ class AquareaHolidayTimerSwitch(AquareaBaseEntity, SwitchEntity):
     @property
     def is_on(self) -> bool:
         """If the holiday timer mode is enabled."""
-        return self.coordinator.device.holiday_timer is aioaquarea.HolidayTimer.ON
+        return self.coordinator.device.holiday_timer is HolidayTimer.ON
 
     async def async_turn_on(self) -> None:
         """Turn on Holiday Timer."""
-        await self.coordinator.device.set_holiday_timer(aioaquarea.HolidayTimer.ON)
+        await self.coordinator.device.set_holiday_timer(HolidayTimer.ON)
 
     async def async_turn_off(self) -> None:
         """Turn off Holiday Timer."""
-        await self.coordinator.device.set_holiday_timer(aioaquarea.HolidayTimer.OFF)
+        await self.coordinator.device.set_holiday_timer(HolidayTimer.OFF)

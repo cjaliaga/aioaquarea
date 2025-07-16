@@ -71,6 +71,12 @@ class WaterHeater(AquareaBaseEntity, WaterHeaterEntity):
         super()._handle_coordinator_update()
 
     def _update_operation_state(self) -> None:
+        if not self.coordinator.device.tank: # Check if tank exists
+            self._attr_state = STATE_OFF
+            self._attr_current_operation = STATE_OFF
+            self._attr_icon = "mdi:water-boiler-off"
+            return
+
         if self.coordinator.device.tank.operation_status == OperationStatus.OFF:
             self._attr_state = STATE_OFF
             self._attr_current_operation = STATE_OFF
@@ -89,6 +95,13 @@ class WaterHeater(AquareaBaseEntity, WaterHeaterEntity):
             )
 
     def _update_temperature(self) -> None:
+        if not self.coordinator.device.tank: # Check if tank exists
+            self._attr_min_temp = None
+            self._attr_max_temp = None
+            self._attr_target_temperature = None
+            self._attr_current_temperature = None
+            return
+
         self._attr_min_temp = self.coordinator.device.tank.heat_min
         self._attr_max_temp = self.coordinator.device.tank.heat_max
         self._attr_target_temperature = self.coordinator.device.tank.target_temperature
