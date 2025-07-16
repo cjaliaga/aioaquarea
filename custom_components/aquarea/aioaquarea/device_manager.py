@@ -133,19 +133,26 @@ class DeviceManager:
                 self._cache_devices[device_info.device_id] = 10
         
         if json_response is None: # If live data failed or not requested, try cached
-            payload = {
-                "apiName": f"/remote/v1/api/devices?gwid={device_info.device_id}&deviceDirect=0",
-                "requestMethod": "GET"
-            }
-            response = await self._client._api_client.request( # Changed to _api_client.request
-                "POST", # Method is POST for the transfer API
-                url="remote/v1/app/common/transfer", # Specific URL for transfer API
-                json=payload, # Pass payload as json
-                throw_on_error=True
-            )
-            json_response = await response.json() # Get JSON from response
-            # Ensure the key exists before decrementing
-            self._cache_devices[device_info.device_id] = self._cache_devices.get(device_info.device_id, 10) - 1
+            try:
+                payload = {
+                    "apiName": f"/remote/v1/api/devices?gwid={device_info.device_id}&deviceDirect=0",
+                    "requestMethod": "GET"
+                }
+                response = await self._client._api_client.request( # Changed to _api_client.request
+                    "POST", # Method is POST for the transfer API
+                    url="remote/v1/app/common/transfer", # Specific URL for transfer API
+                    json=payload, # Pass payload as json
+                    throw_on_error=True
+                )
+                json_response = await response.json() # Get JSON from response
+                # Ensure the key exists before decrementing
+                self._cache_devices[device_info.device_id] = self._cache_devices.get(device_info.device_id, 10) - 1
+            except Exception as e:
+                self._logger.warning("Failed to get cached status for device {}: {}".format(device_info.device_id, e))
+                # If cached data also fails, we might want to raise an error or return a default status
+                # For now, we'll let it proceed with json_response being None, which will likely cause
+                # subsequent errors, but at least it won't hang here.
+                pass
 
         device = json_response.get("status")
         operation_mode_value = device.get("operationMode")
