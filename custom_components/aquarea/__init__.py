@@ -33,7 +33,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
     try:
         await client.login()
-        devices = await client.get_devices(include_long_id=True)
+        devices = await client.get_devices()
         for device in devices:
             coordinator = AquareaDataUpdateCoordinator(
                 hass=hass, entry=entry, client=client, device_info=device
