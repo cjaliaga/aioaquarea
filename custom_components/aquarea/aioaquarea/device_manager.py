@@ -167,15 +167,13 @@ class DeviceManager:
             pump_duty=device.get("pumpDuty"),
             tank_status=[
                 TankStatus(
-                    OperationStatus(tank_status["operationStatus"]),
-                    tank_status["temparatureNow"],
-                    tank_status["heatMax"],
-                    tank_status["heatMin"],
-                    tank_status["heatSet"],
+                    OperationStatus(device.get("tankStatus", {}).get("operationStatus")),
+                    device.get("tankStatus", {}).get("temperatureNow"),
+                    device.get("tankStatus", {}).get("heatMax"),
+                    device.get("tankStatus", {}).get("heatMin"),
+                    device.get("tankStatus", {}).get("heatSet"),
                 )
-                for tank_status in device.get("tankStatus", [])
-                if isinstance(tank_status, dict)
-            ],
+            ] if device.get("tankStatus") else [],
             zones=[
                 DeviceZoneStatus(
                     zone_id=zone_status.get("zoneId"),
