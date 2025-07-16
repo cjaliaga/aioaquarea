@@ -76,6 +76,7 @@ class DeviceManager:
                             operation_mode = OperationMode(device_raw.get("operationMode", 0)) # Default to 0 if not found
                             has_tank = "tankStatus" in device_raw # Check for presence of tankStatus key
                             firmware_version = "Unknown" # Mock data as it's not in the new structure
+                            model = device_raw.get("model", "Unknown Model") # Get model or use default
 
                             zones: list[DeviceZoneInfo] = []
                             for zone_record in device_raw.get("zoneStatus", []):
@@ -96,12 +97,13 @@ class DeviceManager:
                             device_info = DeviceInfo(
                                 device_id,
                                 device_name,
-                                device_id,
+                                device_id, # long_id
                                 operation_mode,
                                 has_tank,
                                 firmware_version,
+                                model, # Added model
                                 zones,
-                                0
+                                StatusDataMode.LIVE # Added status_data_mode
                             )
                             self._device_indexer[device_id] = device_id
                             self._devices.append(device_info)
