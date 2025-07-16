@@ -37,6 +37,8 @@ class AquareaDataUpdateCoordinator(DataUpdateCoordinator):
         self._entry = entry
         self._device_info = device_info
         self._device = None
+        self._temperature_to_wait_for: int | None = None
+        self._zone_id_to_wait_for: int | None = None
         super().__init__(
             hass,
             _LOGGER,
