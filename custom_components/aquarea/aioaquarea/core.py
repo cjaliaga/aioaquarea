@@ -313,3 +313,7 @@ class AquareaClient: # Renamed Client to AquareaClient
     ) -> Consumption:
         """Get device consumption."""
         return await self._consumption_manager.get_device_consumption(long_id, aggregation, date_input)
+
+    async def close(self) -> None:
+        """Close the aiohttp client session."""
+        await self._sess.close()
