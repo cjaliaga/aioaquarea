@@ -139,6 +139,10 @@ class DeviceImpl(Device):
 
     async def __refresh_consumption__(self) -> None:
         """Refreshes the consumption data."""
+        # Temporarily disable consumption refresh as per user request for debugging
+        _LOGGER.debug("Consumption refresh temporarily disabled.")
+        return
+
         if not self._consumption:
             return
 
