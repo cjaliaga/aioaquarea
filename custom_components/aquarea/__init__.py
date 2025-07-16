@@ -4,18 +4,29 @@ import logging
 from typing import Any
 
 from homeassistant.config_entries import ConfigEntry
-from homeassistant.const import CONF_PASSWORD, CONF_USERNAME, Platform
+from homeassistant.const import CONF_PASSWORD, CONF_USERNAME
 from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import ConfigEntryAuthFailed, ConfigEntryNotReady
 import aiohttp # Added import
 from homeassistant.helpers.entity import DeviceInfo
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
+from homeassistant.const import Platform # Moved Platform import here
 
 from .aioaquarea import Client, AuthenticationError, ApiError, AuthenticationErrorCodes # Changed to Client
 from .const import ATTRIBUTION, CLIENT, DEVICES, DOMAIN
 from .coordinator import AquareaDataUpdateCoordinator
 
 _LOGGER = logging.getLogger(__name__)
+
+PLATFORMS: list[Platform] = [
+    Platform.CLIMATE,
+    Platform.SENSOR,
+    Platform.SWITCH,
+    Platform.WATER_HEATER,
+    Platform.BINARY_SENSOR,
+    Platform.BUTTON,
+    Platform.SELECT,
+]
 
 def _create_client(hass: HomeAssistant, entry: ConfigEntry) -> Client: # Changed to Client
     username = entry.data.get(CONF_USERNAME)
@@ -40,8 +51,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
             )
             hass.data[DOMAIN][entry.entry_id][DEVICES][device.device_id] = coordinator
             await coordinator.async_config_entry_first_refresh()
-        # Temporarily remove platform forwarding to isolate the issue
-        # await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
+        await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
     except AuthenticationError as err:
         if err.error_code in (
             AuthenticationErrorCodes.INVALID_USERNAME_OR_PASSWORD,
@@ -58,14 +68,13 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
 async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Unload a config entry."""
-    # Temporarily remove platform unloading to isolate the issue
-    # if unload_ok := await hass.config_entries.async_unload_platforms(entry, PLATFORMS):
-    data = hass.data[DOMAIN].pop(entry.entry_id)
-    for coordinator in data[DEVICES].values():
-        await coordinator.async_shutdown()
-    await data[CLIENT].close()
+    if unload_ok := await hass.config_entries.async_unload_platforms(entry, PLATFORMS):
+        data = hass.data[DOMAIN].pop(entry.entry_id)
+        for coordinator in data[DEVICES].values():
+            await coordinator.async_shutdown()
+        await data[CLIENT].close()
 
-    return True # Assuming unload is always successful for now
+    return unload_ok
 
 class AquareaBaseEntity(CoordinatorEntity[AquareaDataUpdateCoordinator]):
     """Common base for Aquarea entities."""
