@@ -55,8 +55,14 @@ class WaterHeater(AquareaBaseEntity, WaterHeaterEntity):
         self._attr_operation_list = [HEATING, STATE_OFF]
         self._attr_precision = PRECISION_WHOLE
         self._attr_target_temperature_step = 1
+        self._attr_available = self.coordinator.device.tank is not None # Set initial availability
         self._update_temperature()
         self._update_operation_state()
+
+    @property
+    def available(self) -> bool:
+        """Return True if entity is available."""
+        return self._attr_available
 
     @property
     def target_temperature_step(self) -> float | None:
@@ -66,6 +72,7 @@ class WaterHeater(AquareaBaseEntity, WaterHeaterEntity):
     @callback
     def _handle_coordinator_update(self) -> None:
         """Handle updated data from the coordinator."""
+        self._attr_available = self.coordinator.device.tank is not None # Update availability
         self._update_temperature()
         self._update_operation_state()
         super()._handle_coordinator_update()
@@ -124,6 +131,10 @@ class WaterHeater(AquareaBaseEntity, WaterHeaterEntity):
             self.coordinator.device.device_name,
             operation_mode,
         )
+        if not self.coordinator.device.tank:
+            _LOGGER.warning("Attempted to set operation mode on a water heater with no tank object.")
+            return
+
         if operation_mode == HEATING:
             await self.coordinator.device.tank.turn_on()
         elif operation_mode == STATE_OFF:
