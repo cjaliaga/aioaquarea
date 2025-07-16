@@ -191,8 +191,8 @@ class HeatPumpClimate(AquareaBaseEntity, ClimateEntity):
             self._attr_target_temperature = temperature
             _LOGGER.debug(f"Optimistically setting _attr_target_temperature to {self._attr_target_temperature}")
             self.async_write_ha_state() # Push optimistic update immediately
-            await self.coordinator.async_refresh(temperature=int(temperature), zone_id=zone.zone_id) # Then refresh in background, waiting for the new value
-            _LOGGER.debug(f"async_refresh completed for zone {zone.zone_id}. Final _attr_target_temperature: {self._attr_target_temperature}")
+            await self.coordinator.async_refresh() # Trigger a refresh
+            _LOGGER.debug(f"async_refresh completed. Final _attr_target_temperature: {self._attr_target_temperature}")
 
     async def async_set_preset_mode(self, preset_mode: str) -> None:
         """Set new target preset mode."""

@@ -37,20 +37,12 @@ class AquareaDataUpdateCoordinator(DataUpdateCoordinator):
         self._entry = entry
         self._device_info = device_info
         self._device = None
-        self._temperature_to_wait_for: int | None = None
-        self._zone_id_to_wait_for: int | None = None
         super().__init__(
             hass,
             _LOGGER,
             name=f"{DOMAIN}-{entry.data[CONF_USERNAME]}-{device_info.device_id}",
             update_interval=SCAN_INTERVAL,
         )
-
-    async def async_refresh(self, temperature: int | None = None, zone_id: int | None = None) -> None:
-        """Refresh data and optionally wait for a specific temperature."""
-        self._temperature_to_wait_for = temperature
-        self._zone_id_to_wait_for = zone_id
-        await super().async_refresh()
 
     @property
     def device(self) -> Device:
@@ -61,20 +53,11 @@ class AquareaDataUpdateCoordinator(DataUpdateCoordinator):
         """Fetch data from Aquarea Smart Cloud Service."""
         try:
             # We are not getting consumption data on the first refresh, we'll get it on the next ones
-            if not self._device:
-                self._device = await self._client.get_device(
-                    device_info=self._device_info,
-                    consumption_refresh_interval=CONSUMPTION_REFRESH_INTERVAL,
-                    timezone=dt_util.DEFAULT_TIME_ZONE,
-                )
-            else:
-                await self.device.refresh_data(
-                    expected_temperature=self._temperature_to_wait_for,
-                    zone_id=self._zone_id_to_wait_for
-                )
-                # Reset the waiting parameters after refresh
-                self._temperature_to_wait_for = None
-                self._zone_id_to_wait_for = None
+            self._device = await self._client.get_device(
+                device_info=self._device_info,
+                consumption_refresh_interval=CONSUMPTION_REFRESH_INTERVAL,
+                timezone=dt_util.DEFAULT_TIME_ZONE,
+            )
         except AuthenticationError as err:
             if err.error_code in (
                 AuthenticationErrorCodes.INVALID_USERNAME_OR_PASSWORD,
