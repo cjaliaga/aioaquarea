@@ -19,6 +19,9 @@ from .data import (
     SpecialStatus,
     ZoneTemperatureSetUpdate,
     ExtendedOperationMode,
+    StatusDataMode, # Added StatusDataMode
+    DeviceZoneInfo, # Added DeviceZoneInfo
+    OperationMode, # Added OperationMode
 )
 from .errors import DataNotAvailableError
 from .statistics import ConsumptionType, DateType
@@ -57,7 +60,7 @@ class DeviceImpl(Device):
         firmware_version: str,
         model: str,
         has_tank: bool,
-        zones_info: list[DeviceInfo],
+        zones_info: list[DeviceZoneInfo], # Corrected type hint
         status: DeviceStatus,
         client: "AquareaClient", # Updated type hint to string literal
         consumption_refresh_interval: Optional[dt.timedelta] = None,
@@ -68,7 +71,7 @@ class DeviceImpl(Device):
             device_id=device_id,
             name=name,
             long_id=long_id,
-            mode=OperationStatus.ON, # Assuming a default operation mode for DeviceInfo
+            mode=OperationMode.HEAT, # Assuming a default operation mode for DeviceInfo, changed from OperationStatus.ON
             has_tank=has_tank,
             firmware_version=firmware_version,
             model=model,
@@ -91,7 +94,11 @@ class DeviceImpl(Device):
         if self.has_tank:
             self._tank = TankImpl(self._status.tank_status[0], self, self._client)
 
-        self.__build_zones__(self.zones_info) # Pass zones_info to __build_zones__
+        # The __build_zones__ method is part of the base Device class and uses info.zones,
+        # which is now correctly populated by the DeviceInfo object passed to super().__init__.
+        # So, this line is no longer needed here.
+        # self.__build_zones__(self.zones_info)
+
 
         if self._consumption:
             await self.__refresh_consumption__()
