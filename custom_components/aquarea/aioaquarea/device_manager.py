@@ -104,6 +104,7 @@ class DeviceManager:
                                 zones,
                                 StatusDataMode.LIVE # Added status_data_mode
                             )
+                            self._logger.debug(f"get_devices: Device {device_id} has_tank: {has_tank}, raw device_raw: {device_raw}")
                             self._device_indexer[device_id] = device_id
                             self._devices.append(device_info)
         return self._devices + self._unknown_devices
@@ -123,6 +124,7 @@ class DeviceManager:
                 throw_on_error=True
             )
             json_response = await response.json()
+            self._logger.debug(f"get_device_status (live): Raw JSON response for device {device_info.device_id}: {json_response}")
         except Exception as e:
             self._logger.warning("Failed to get live status for device {}: {}".format(device_info.device_id, e))
             # If live data fails, try cached data as a fallback
@@ -138,7 +140,7 @@ class DeviceManager:
                     throw_on_error=True
                 )
                 json_response = await response.json()
-                self._logger.info("Successfully retrieved cached status for device {} after live data failure.".format(device_info.device_id))
+                self._logger.info("Successfully retrieved cached status for device {} after live data failure. Raw JSON: {}".format(device_info.device_id, json_response))
             except Exception as e_cached:
                 self._logger.error("Failed to get cached status for device {}: {}".format(device_info.device_id, e_cached))
                 raise RequestFailedError("Failed to retrieve device status after multiple attempts.") from e_cached
