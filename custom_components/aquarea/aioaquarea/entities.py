@@ -100,14 +100,16 @@ class DeviceImpl(Device):
             self._status = await self._client.get_device_status(self._info)
 
             if expected_temperature is not None and zone_id is not None:
-                zone = self._status.zones.get(zone_id)
+                zone_status_list = [z for z in self._status.zones if z.zone_id == zone_id]
+                zone = zone_status_list[0] if zone_status_list else None
+
                 if zone:
                     # Check if the current temperature matches the expected temperature
                     # Use the correct target temperature based on the current mode
                     if self.mode in (ExtendedOperationMode.COOL, ExtendedOperationMode.AUTO_COOL):
-                        current_temp = zone.cool_target_temperature
+                        current_temp = zone.cool_set
                     else:
-                        current_temp = zone.heat_target_temperature
+                        current_temp = zone.heat_set
 
                     if current_temp == expected_temperature:
                         _LOGGER.debug(f"Temperature for zone {zone_id} matched expected {expected_temperature} after {i+1} retries.")
