@@ -191,8 +191,24 @@ class HeatPumpClimate(AquareaBaseEntity, ClimateEntity):
             self._attr_target_temperature = temperature
             _LOGGER.debug(f"Optimistically setting _attr_target_temperature to {self._attr_target_temperature}")
             self.async_write_ha_state() # Push optimistic update immediately
-            await self.coordinator.async_refresh() # Trigger a refresh
-            _LOGGER.debug(f"async_refresh completed. Final _attr_target_temperature: {self._attr_target_temperature}")
+
+            max_retries = 10
+            retry_delay = 1  # seconds
+
+            for i in range(max_retries):
+                await self.coordinator.async_refresh() # Trigger a refresh
+                _LOGGER.debug(f"Polling attempt {i+1}/{max_retries}. Current _attr_target_temperature: {self._attr_target_temperature}, Expected: {temperature}")
+
+                if self._attr_target_temperature == temperature:
+                    _LOGGER.debug(f"Target temperature matched after {i+1} retries. Exiting polling loop.")
+                    break
+                
+                if i < max_retries - 1:
+                    await asyncio.sleep(retry_delay)
+            else:
+                _LOGGER.warning(f"Target temperature did not match expected {temperature} after {max_retries} retries. Final _attr_target_temperature: {self._attr_target_temperature}")
+            
+            _LOGGER.debug(f"async_set_temperature completed. Final _attr_target_temperature: {self._attr_target_temperature}")
 
     async def async_set_preset_mode(self, preset_mode: str) -> None:
         """Set new target preset mode."""
