@@ -62,4 +62,4 @@ class AquareaDefrostBinarySensor(AquareaBaseEntity, BinarySensorEntity):
     @property
     def is_on(self) -> bool:
         """Return true if the binary sensor is on."""
-        return self.coordinator.device.device_mode_status is aioaquarea.DeviceModeStatus.DEFROST
+        return self.coordinator.device.device_mode_status is DeviceModeStatus.DEFROST

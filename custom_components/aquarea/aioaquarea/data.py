@@ -373,12 +373,12 @@ class DeviceZone:
     @property
     def operation_status(self) -> OperationStatus:
         """Gets the zone operation status (ON/OFF)"""
-        return self._status.operation_status
+        return self._status.operation_status if self._status else OperationStatus.OFF
 
     @property
     def temperature(self) -> int:
         """Gets the zone temperature"""
-        return self._status.temperature
+        return self._status.temperature if self._status else 0
 
     @property
     def cool_mode(self) -> bool:
@@ -408,32 +408,32 @@ class DeviceZone:
     @property
     def cool_target_temperature(self) -> int | None:
         """Gets the target temperature for cool mode of the zone"""
-        return self._status.cool_set
+        return self._status.cool_set if self._status else None
 
     @property
     def heat_target_temperature(self) -> int | None:
         """Gets the target temperature for heat mode of the zone"""
-        return self._status.heat_set
+        return self._status.heat_set if self._status else None
 
     @property
     def cool_max(self) -> int | None:
         """Gets the maximum allowed temperature for cool mode of the zone"""
-        return self._status.cool_max
+        return self._status.cool_max if self._status else None
 
     @property
     def cool_min(self) -> int | None:
         """Gets the minimum allowed temperature for cool mode of the zone"""
-        return self._status.cool_min
+        return self._status.cool_min if self._status else None
 
     @property
     def heat_max(self) -> int | None:
         """Gets the maximum allowed temperature for heat mode of the zone"""
-        return self._status.heat_max
+        return self._status.heat_max if self._status else None
 
     @property
     def heat_min(self) -> int | None:
         """Gets the minimum allowed temperature for heat mode of the zone"""
-        return self._status.heat_min
+        return self._status.heat_min if self._status else None
 
     @property
     def supports_set_temperature(self) -> bool:

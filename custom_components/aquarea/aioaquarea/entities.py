@@ -89,7 +89,7 @@ class DeviceImpl(Device):
             self._tank = TankImpl(self._status.tank_status[0], self, self._client)
 
     async def refresh_data(self) -> None:
-        self._status = await self._client.get_device_status(self.device_id)
+        self._status = await self._client.get_device_status(self._info) # Pass the DeviceInfo object
 
         if self.has_tank:
             self._tank = TankImpl(self._status.tank_status[0], self, self._client)

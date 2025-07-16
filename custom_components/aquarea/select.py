@@ -83,7 +83,7 @@ class AquareaPowerfulTimeSelect(AquareaBaseEntity, SelectEntity):
     @property
     def icon(self) -> str:
         """Return the icon."""
-        return "mdi:fire-off" if self.coordinator.device.powerful_time is aioaquarea.PowerfulTime.OFF else "mdi:fire"
+        return "mdi:fire-off" if self.coordinator.device.powerful_time is PowerfulTime.OFF else "mdi:fire"
 
     @property
     def current_option(self) -> str:
