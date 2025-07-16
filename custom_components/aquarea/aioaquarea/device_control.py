@@ -93,16 +93,6 @@ class AquareaDeviceControl:
             "requestMethod": "POST",
             "bodyParam": {
                 "gwid": long_device_id,
-                "zoneStatus": [
-                    {
-                        "zoneId": 1,
-                        "operationStatus": OperationStatus.OFF.value # Assuming default off for zones
-                    },
-                    {
-                        "zoneId": 2,
-                        "operationStatus": OperationStatus.OFF.value # Assuming default off for zones
-                    }
-                ],
                 "tankStatus": {
                     "operationStatus": new_operation_status.value
                 }
@@ -111,12 +101,9 @@ class AquareaDeviceControl:
 
         await self._api_client.request(
             "POST",
-            AQUAREA_SERVICE_DEVICES, # The path is now part of apiName in the body
-            headers=PanasonicRequestHeader.get_aqua_headers(
-                content_type="application/json",
-                referer=f"{self._base_url}{AQUAREA_SERVICE_A2W_STATUS_DISPLAY}"
-            ),
+            url="remote/v1/app/common/transfer", # Specific URL for transfer API
             json=data,
+            throw_on_error=True,
         )
 
     async def post_device_operation_update(
