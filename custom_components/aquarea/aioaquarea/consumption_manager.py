@@ -24,9 +24,7 @@ class AquareaConsumptionManager:
         response = await self._api_client.request(
             "GET",
             f"{AQUAREA_SERVICE_CONSUMPTION}/{long_id}?{aggregation}={date_input}",
-            headers=PanasonicRequestHeader.get_aqua_headers(
-                referer=f"{self._base_url}{AQUAREA_SERVICE_A2W_STATUS_DISPLAY}"
-            ),
+            headers=await PanasonicRequestHeader.get(self._api_client._settings, self._api_client._app_version),
         )
 
         date_data = await response.json()
