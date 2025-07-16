@@ -538,17 +538,12 @@ class Device(ABC):
     _zones: dict[int, DeviceZone] = {}
 
     def __init__(self, info: DeviceInfo, status: DeviceStatus) -> None:
-        self.device_id = info.device_id
-        self.long_id = info.long_id
-        self.device_name = info.name
-        self.firmware_version = info.firmware_version
-        self.model = info.model
-        self.manufacturer = PANASONIC
-        self.has_tank = info.has_tank
+        self._info = info # Store the DeviceInfo object
         self._status = status
+        self.manufacturer = PANASONIC # This can remain a direct assignment if it's constant
         self._tank: Tank | None = None
         self._consumption: dict[datetime, Consumption] = LimitedSizeDict(5)
-        self.__build_zones__(info.zones)
+        self.__build_zones__(info.zones) # Use info.zones directly
 
     def __build_zones__(self, zones_info: list[DeviceZoneInfo]) -> None:
         for zone in zones_info:
@@ -587,6 +582,26 @@ class Device(ABC):
     def operation_status(self) -> OperationStatus:
         """The operation status of the device"""
         return self._status.operation_status
+
+    @property
+    def device_id(self) -> str:
+        return self._info.device_id
+
+    @property
+    def long_id(self) -> str:
+        return self._info.long_id
+
+    @property
+    def device_name(self) -> str:
+        return self._info.name
+
+    @property
+    def firmware_version(self) -> str:
+        return self._info.firmware_version
+
+    @property
+    def model(self) -> str:
+        return self._info.model
 
     @property
     def has_tank(self) -> bool:
