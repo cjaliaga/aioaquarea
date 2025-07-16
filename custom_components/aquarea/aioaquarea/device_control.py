@@ -88,6 +88,7 @@ class AquareaDeviceControl:
             "requestMethod": "POST",
             "bodyParam": {
                 "gwid": long_device_id,
+                "operationStatus": new_device_operation_status.value, # Add overall device operation status
                 "tankStatus": {
                     "operationStatus": new_operation_status.value
                 }
