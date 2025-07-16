@@ -71,7 +71,7 @@ class DeviceImpl(Device):
             device_id=device_id,
             name=name,
             long_id=long_id,
-            mode=OperationMode.HEAT, # Assuming a default operation mode for DeviceInfo, changed from OperationStatus.ON
+            mode=OperationMode.Heat, # Corrected to use 'Heat' as defined in data.py
             has_tank=has_tank,
             firmware_version=firmware_version,
             model=model,
