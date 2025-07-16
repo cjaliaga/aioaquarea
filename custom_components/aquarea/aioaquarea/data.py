@@ -284,6 +284,7 @@ class DeviceInfo:
     mode: OperationMode
     has_tank: bool
     firmware_version: str
+    model: str # Added model attribute
     zones: list[DeviceZoneInfo]
     status_data_mode: StatusDataMode # New field
 
