@@ -153,6 +153,9 @@ class DeviceManager:
                 # For now, we'll let it proceed with json_response being None, which will likely cause
                 # subsequent errors, but at least it won't hang here.
                 pass
+        
+        if json_response is None:
+            raise RequestFailedError("Failed to retrieve device status after multiple attempts.")
 
         device = json_response.get("status")
         operation_mode_value = device.get("operationMode")
