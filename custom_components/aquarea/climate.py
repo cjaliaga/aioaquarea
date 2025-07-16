@@ -116,7 +116,9 @@ class HeatPumpClimate(AquareaBaseEntity, ClimateEntity):
             )
         self._attr_precision = PRECISION_WHOLE
         self._attr_hvac_modes = [HVACMode.HEAT, HVACMode.OFF]
-        if self.coordinator.device.support_cooling(zone_id):
+        supports_cooling = self.coordinator.device.support_cooling(zone_id)
+        _LOGGER.debug(f"HeatPumpClimate for zone {zone_id}: supports_cooling = {supports_cooling}")
+        if supports_cooling:
             self._attr_hvac_modes.extend([HVACMode.COOL, HVACMode.HEAT_COOL])
 
     @callback

@@ -83,11 +83,12 @@ class DeviceManager:
                                 # Mock data for fields not present in the new zoneStatus structure
                                 zone_id = zone_record.get("zoneId")
                                 if zone_id is not None:
+                                    has_cool_mode = "coolMin" in zone_record and "coolMax" in zone_record
                                     zone = DeviceZoneInfo(
                                         zone_id,
                                         f"Zone {zone_id}", # Mock zone name
                                         "Unknown", # Mock zone type
-                                        False, # Mock cool_mode
+                                        has_cool_mode, # Determine cool_mode based on coolMin/coolMax presence
                                         SensorMode.DIRECT, # Mock heat_sensor
                                         SensorMode.DIRECT, # Mock cool_sensor
                                         SensorMode.DIRECT, # Mock cool_sensor
