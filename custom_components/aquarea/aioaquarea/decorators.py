@@ -1,7 +1,7 @@
 import functools
 import logging
 from typing import TYPE_CHECKING # Re-add TYPE_CHECKING
-from .errors import AuthenticationError, AuthenticationErrorCodes
+from .errors import AuthenticationError, AuthenticationErrorCodes, ApiError # Added ApiError
 
 if TYPE_CHECKING: # Re-add TYPE_CHECKING block
     from .core import AquareaClient
@@ -19,15 +19,16 @@ def auth_required(fn):
 
         try:
             response = await fn(client, *args, **kwargs)
-        except AuthenticationError as exception:
+        except (AuthenticationError, ApiError) as exception: # Catch both AuthenticationError and ApiError
             client.logger.warning(
-                f"{client}: Auth Error: {exception.error_code} - {exception.error_message}."
+                f"{client}: API Error: {getattr(exception, 'error_code', 'N/A')} - {getattr(exception, 'error_message', str(exception))}."
             )
 
-            # If the error is invalid credentials, we don't want to retry the request.
+            # If the error is invalid credentials or missing token, try to re-login.
+            # Also check for specific messages indicating token issues.
             if (
-                exception.error_code
-                == AuthenticationErrorCodes.INVALID_USERNAME_OR_PASSWORD
+                (isinstance(exception, AuthenticationError) and exception.error_code == AuthenticationErrorCodes.INVALID_USERNAME_OR_PASSWORD)
+                or (isinstance(exception, ApiError) and "Missing Authentication Token" in str(exception))
                 or not client.is_refresh_login_enabled
             ):
                 raise
