@@ -45,7 +45,7 @@ class AquareaDataUpdateCoordinator(DataUpdateCoordinator):
         )
 
     @property
-    def device(self) -> aioaquarea.Device:
+    def device(self) -> Device:
         """Return the device."""
         return self._device
 
@@ -61,13 +61,13 @@ class AquareaDataUpdateCoordinator(DataUpdateCoordinator):
                 )
             else:
                 await self.device.refresh_data()
-        except aioaquarea.AuthenticationError as err:
+        except AuthenticationError as err:
             if err.error_code in (
-                aioaquarea.AuthenticationErrorCodes.INVALID_USERNAME_OR_PASSWORD,
-                aioaquarea.AuthenticationErrorCodes.INVALID_CREDENTIALS,
+                AuthenticationErrorCodes.INVALID_USERNAME_OR_PASSWORD,
+                AuthenticationErrorCodes.INVALID_CREDENTIALS,
             ):
                 raise ConfigEntryAuthFailed from err
-        except aioaquarea.errors.RequestFailedError as err:
+        except RequestFailedError as err:
             raise UpdateFailed(
                 f"Error communicating with Aquarea Smart Cloud API: {err}"
             ) from err
