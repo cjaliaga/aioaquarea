@@ -70,7 +70,7 @@ def get_hvac_mode_from_ext_op_mode(
     if mode == ExtendedOperationMode.COOL:
         return HVACMode.COOL
     if mode in (ExtendedOperationMode.AUTO_COOL, ExtendedOperationMode.AUTO_HEAT):
-        return HVACMode.HEAT_COOL
+        return HVACMode.AUTO
     return HVACMode.OFF
 
 
@@ -89,7 +89,7 @@ def get_update_operation_mode_from_hvac_mode(mode: HVACMode) -> UpdateOperationM
         return UpdateOperationMode.HEAT
     if mode == HVACMode.COOL:
         return UpdateOperationMode.COOL
-    if mode == HVACMode.HEAT_COOL:
+    if mode == HVACMode.AUTO:
         return UpdateOperationMode.AUTO
     return UpdateOperationMode.OFF
 
@@ -119,7 +119,7 @@ class HeatPumpClimate(AquareaBaseEntity, ClimateEntity):
         supports_cooling = self.coordinator.device.support_cooling(zone_id)
         _LOGGER.debug(f"HeatPumpClimate for zone {zone_id}: supports_cooling = {supports_cooling}")
         if supports_cooling:
-            self._attr_hvac_modes.extend([HVACMode.COOL, HVACMode.HEAT_COOL])
+            self._attr_hvac_modes.extend([HVACMode.COOL, HVACMode.AUTO])
 
     @callback
     def _handle_coordinator_update(self) -> None:

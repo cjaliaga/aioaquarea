@@ -168,8 +168,23 @@ class DeviceImpl(Device):
             else OperationStatus.ON
         )
 
+        tank_operation_status = self.tank.operation_status if self.has_tank and self.tank else OperationStatus.OFF
+
+        # Prepare zone temperature updates to be sent along with operation mode
+        zone_temperature_updates: list[ZoneTemperatureSetUpdate] = []
+        for zone_id, zone_obj in self.zones.items():
+            # Only include if the zone supports setting temperature
+            if zone_obj.supports_set_temperature:
+                zone_temperature_updates.append(
+                    ZoneTemperatureSetUpdate(
+                        zone_id=zone_id,
+                        heat_set=zone_obj.heat_target_temperature,
+                        cool_set=zone_obj.cool_target_temperature,
+                    )
+                )
+
         await self._client.post_device_operation_update(
-            self.long_id, mode, zones, operation_status
+            self.long_id, mode, zones, operation_status, tank_operation_status, zone_temperature_updates
         )
 
     async def set_temperature(

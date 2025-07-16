@@ -108,33 +108,46 @@ class AquareaDeviceControl:
         mode: UpdateOperationMode,
         zones: dict[int, OperationStatus],
         operation_status: OperationStatus,
+        tank_operation_status: OperationStatus,
+        zone_temperature_updates: list[ZoneTemperatureSetUpdate] | None = None, # New parameter
     ) -> None:
         """Post device operation update."""
+        # Construct zoneStatus list based on provided zones and optional temperature updates
+        zone_status_list = []
+        for zone_id, op_status in zones.items():
+            zone_data = {
+                "zoneId": zone_id,
+                "operationStatus": op_status.value,
+            }
+            if zone_temperature_updates:
+                for temp_update in zone_temperature_updates:
+                    if temp_update.zone_id == zone_id:
+                        if temp_update.heat_set is not None:
+                            zone_data["heatSet"] = temp_update.heat_set
+                        if temp_update.cool_set is not None:
+                            zone_data["coolSet"] = temp_update.cool_set
+                        break
+            zone_status_list.append(zone_data)
+
         data = {
-            "status": [
-                {
-                    "deviceGuid": long_id,
-                    "operationMode": mode.value,
-                    "operationStatus": operation_status.value,
-                    "zoneStatus": [
-                        {
-                            "zoneId": zone_id,
-                            "operationStatus": zones[zone_id].value,
-                        }
-                        for zone_id in zones
-                    ],
+            "apiName": "/remote/v1/api/devices",
+            "requestMethod": "POST",
+            "bodyParam": {
+                "gwid": long_id,
+                "operationMode": mode.value,
+                "operationStatus": operation_status.value,
+                "zoneStatus": zone_status_list,
+                "tankStatus": {
+                    "operationStatus": tank_operation_status.value
                 }
-            ]
+            }
         }
 
         await self._api_client.request(
             "POST",
-            f"{AQUAREA_SERVICE_DEVICES}/{long_id}",
-            headers=PanasonicRequestHeader.get_aqua_headers(
-                content_type="application/json",
-                referer=f"{self._base_url}{AQUAREA_SERVICE_A2W_STATUS_DISPLAY}"
-            ),
+            url="remote/v1/app/common/transfer", # Specific URL for transfer API
             json=data,
+            throw_on_error=True,
         )
 
     async def post_device_set_special_status(
@@ -200,7 +213,6 @@ class AquareaDeviceControl:
             "requestMethod": "POST",
             "bodyParam": {
                 "gwid": long_id,
-                "operationMode": 3,
                 "zoneStatus": [
                     {
                         "zoneId": zone_id,
