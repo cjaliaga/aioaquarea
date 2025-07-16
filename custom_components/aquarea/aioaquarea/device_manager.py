@@ -45,7 +45,6 @@ class DeviceManager:
         self._groups = None
         self._devices: list[DeviceInfo] | None = None
         self._unknown_devices: list[DeviceInfo] = []
-        self._cache_devices = {}
         self._device_indexer = {}
 
     async def get_devices(self) -> list[DeviceInfo]:
@@ -112,47 +111,37 @@ class DeviceManager:
     async def get_device_status(self, device_info: DeviceInfo) -> DeviceStatus:
         """Retrives device status."""
         json_response = None
-        if (device_info.status_data_mode == StatusDataMode.LIVE 
-            or (device_info.device_id in self._cache_devices and self._cache_devices[device_info.device_id] <= 0)):
-            try:
-                payload = {
-                    "apiName": f"/remote/v1/api/devices?gwid={device_info.device_id}&deviceDirect=1",
-                    "requestMethod": "GET"
-                }
-                response = await self._client._api_client.request( # Changed to _api_client.request
-                    "POST", # Method is POST for the transfer API
-                    url="remote/v1/app/common/transfer", # Specific URL for transfer API
-                    json=payload, # Pass payload as json
-                    throw_on_error=True
-                )
-                json_response = await response.json() # Get JSON from response
-                device_info.status_data_mode = StatusDataMode.LIVE
-            except Exception as e:
-                self._logger.warning("Failed to get live status for device {} switching to cached data.".format(device_info.device_id))
-                device_info.status_data_mode = StatusDataMode.CACHED
-                self._cache_devices[device_info.device_id] = 10
-        
-        if json_response is None: # If live data failed or not requested, try cached
+        try:
+            payload = {
+                "apiName": f"/remote/v1/api/devices?gwid={device_info.device_id}&deviceDirect=1",
+                "requestMethod": "GET"
+            }
+            response = await self._client._api_client.request(
+                "POST",
+                url="remote/v1/app/common/transfer",
+                json=payload,
+                throw_on_error=True
+            )
+            json_response = await response.json()
+        except Exception as e:
+            self._logger.warning("Failed to get live status for device {}: {}".format(device_info.device_id, e))
+            # If live data fails, try cached data as a fallback
             try:
                 payload = {
                     "apiName": f"/remote/v1/api/devices?gwid={device_info.device_id}&deviceDirect=0",
                     "requestMethod": "GET"
                 }
-                response = await self._client._api_client.request( # Changed to _api_client.request
-                    "POST", # Method is POST for the transfer API
-                    url="remote/v1/app/common/transfer", # Specific URL for transfer API
-                    json=payload, # Pass payload as json
+                response = await self._client._api_client.request(
+                    "POST",
+                    url="remote/v1/app/common/transfer",
+                    json=payload,
                     throw_on_error=True
                 )
-                json_response = await response.json() # Get JSON from response
-                # Ensure the key exists before decrementing
-                self._cache_devices[device_info.device_id] = self._cache_devices.get(device_info.device_id, 10) - 1
-            except Exception as e:
-                self._logger.warning("Failed to get cached status for device {}: {}".format(device_info.device_id, e))
-                # If cached data also fails, we might want to raise an error or return a default status
-                # For now, we'll let it proceed with json_response being None, which will likely cause
-                # subsequent errors, but at least it won't hang here.
-                pass
+                json_response = await response.json()
+                self._logger.info("Successfully retrieved cached status for device {} after live data failure.".format(device_info.device_id))
+            except Exception as e_cached:
+                self._logger.error("Failed to get cached status for device {}: {}".format(device_info.device_id, e_cached))
+                raise RequestFailedError("Failed to retrieve device status after multiple attempts.") from e_cached
         
         if json_response is None:
             raise RequestFailedError("Failed to retrieve device status after multiple attempts.")
