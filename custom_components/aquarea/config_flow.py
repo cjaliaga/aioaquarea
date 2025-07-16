@@ -128,18 +128,18 @@ class AquareaConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         """Validate the user input allows us to connect."""
         errors = {}
         async with aiohttp.ClientSession() as session:
-            self._api = aioaquarea.AquareaClient(session, username, password)
+            self._api = Client(session, username, password)
             try:
                 await self._api.login()
-            except aioaquarea.AuthenticationError as err:
+            except AuthenticationError as err:
                 if err.error_code in (
-                    aioaquarea.AuthenticationErrorCodes.INVALID_USERNAME_OR_PASSWORD,
-                    aioaquarea.AuthenticationErrorCodes.INVALID_CREDENTIALS,
+                    AuthenticationErrorCodes.INVALID_USERNAME_OR_PASSWORD,
+                    AuthenticationErrorCodes.INVALID_CREDENTIALS,
                 ):
                     errors["base"] = "invalid_auth"
                 else:
                     errors["base"] = "unknown"
-            except aioaquarea.errors.RequestFailedError:
+            except RequestFailedError:
                 _LOGGER.exception("Request failed during validation") # Added logging
                 errors["base"] = "cannot_connect"
             except Exception:  # pylint: disable=broad-except
