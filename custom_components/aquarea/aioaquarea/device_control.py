@@ -59,26 +59,21 @@ class AquareaDeviceControl:
     ) -> None:
         """Post device tank temperature."""
         data = {
-            "status": [
-                {
-                    "deviceGuid": long_device_id,
-                    "tankStatus": [
-                        {
-                            "heatSet": new_temperature,
-                        }
-                    ],
+            "apiName": "/remote/v1/api/devices",
+            "requestMethod": "POST",
+            "bodyParam": {
+                "gwid": long_device_id,
+                "tankStatus": {
+                    "heatSet": new_temperature,
                 }
-            ]
+            }
         }
 
         await self._api_client.request(
             "POST",
-            f"{AQUAREA_SERVICE_DEVICES}/{long_device_id}",
-            headers=PanasonicRequestHeader.get_aqua_headers(
-                content_type="application/json",
-                referer=f"{self._base_url}{AQUAREA_SERVICE_A2W_STATUS_DISPLAY}"
-            ),
+            url="remote/v1/app/common/transfer", # Specific URL for transfer API
             json=data,
+            throw_on_error=True,
         )
 
     async def post_device_tank_operation_status(
