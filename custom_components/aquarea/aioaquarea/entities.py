@@ -95,8 +95,11 @@ class DeviceImpl(Device):
         """Refreshes the device data, optionally waiting for a specific temperature."""
         max_retries = 5
         retry_delay = 1  # seconds
+        
+        _LOGGER.debug(f"Starting refresh_data for device {self.long_id}. Expected temp: {expected_temperature}, Zone ID: {zone_id}")
 
         for i in range(max_retries):
+            _LOGGER.debug(f"Refresh attempt {i+1}/{max_retries} for device {self.long_id}.")
             self._status = await self._client.get_device_status(self._info)
 
             if expected_temperature is not None and zone_id is not None:
@@ -107,20 +110,29 @@ class DeviceImpl(Device):
                     # Check if the current temperature matches the expected temperature
                     # Use the correct target temperature based on the current mode
                     if self.mode in (ExtendedOperationMode.COOL, ExtendedOperationMode.AUTO_COOL):
-                        current_temp = zone.cool_set
+                        current_temp = zone.cool_target_temperature
+                        _LOGGER.debug(f"Device mode is COOL/AUTO_COOL. Checking cool_target_temperature.")
                     else:
-                        current_temp = zone.heat_set
+                        current_temp = zone.heat_target_temperature
+                        _LOGGER.debug(f"Device mode is HEAT/AUTO_HEAT. Checking heat_target_temperature.")
 
                     if current_temp == expected_temperature:
-                        _LOGGER.debug(f"Temperature for zone {zone_id} matched expected {expected_temperature} after {i+1} retries.")
+                        _LOGGER.debug(f"Temperature for zone {zone_id} matched expected {expected_temperature} after {i+1} retries. Exiting polling loop.")
                         break # Temperature matched, exit loop
-                _LOGGER.debug(f"Temperature for zone {zone_id} is {current_temp if zone else 'N/A'}, expected {expected_temperature}. Retrying...")
+                else:
+                    current_temp = None # Zone not found
+                _LOGGER.debug(f"Temperature for zone {zone_id} is {current_temp}, expected {expected_temperature}. Retrying...")
             
             if i < max_retries - 1:
                 await asyncio.sleep(retry_delay)
-        else:
+        else: # This block executes if the loop completes without a 'break'
             if expected_temperature is not None and zone_id is not None:
                 _LOGGER.warning(f"Temperature for zone {zone_id} did not match expected {expected_temperature} after {max_retries} retries. Using last fetched value.")
+            else:
+                _LOGGER.debug(f"Refresh_data completed for device {self.long_id} without specific temperature expectation.")
+
+        if self._consumption:
+            await self.__refresh_consumption__()
 
         if self._consumption:
             await self.__refresh_consumption__()
