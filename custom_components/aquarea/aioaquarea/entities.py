@@ -63,7 +63,19 @@ class DeviceImpl(Device):
         consumption_refresh_interval: Optional[dt.timedelta] = None,
         timezone: dt.timezone = dt.timezone.utc,
     ) -> None:
-        super().__init__(device_id, long_id, name, firmware_version, model, has_tank, zones_info, status)
+        # Create a DeviceInfo object from the individual arguments
+        device_info = DeviceInfo(
+            device_id=device_id,
+            name=name,
+            long_id=long_id,
+            mode=OperationStatus.ON, # Assuming a default operation mode for DeviceInfo
+            has_tank=has_tank,
+            firmware_version=firmware_version,
+            model=model,
+            zones=zones_info,
+            status_data_mode=StatusDataMode.LIVE # Assuming a default status data mode
+        )
+        super().__init__(device_info, status)
         self._client = client
         self._timezone = timezone
         self._last_consumption_refresh: dt.datetime | None = None
