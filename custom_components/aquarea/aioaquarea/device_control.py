@@ -221,7 +221,7 @@ class AquareaDeviceControl:
                 "zoneStatus": [
                     {
                         "zoneId": zone_id,
-                        "coolSet": temperature,
+                        key: temperature,
                     }
                 ]
             }
