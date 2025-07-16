@@ -186,10 +186,6 @@ class HeatPumpClimate(AquareaBaseEntity, ClimateEntity):
                 int(temperature), zone.zone_id
             )
             # Optimistically update the target temperature
-            if self.coordinator.device.mode in (ExtendedOperationMode.COOL, ExtendedOperationMode.AUTO_COOL):
-                zone.cool_target_temperature = temperature
-            else:
-                zone.heat_target_temperature = temperature
             self._attr_target_temperature = temperature
 
             await self.coordinator.async_refresh()
