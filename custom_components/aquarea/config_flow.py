@@ -13,7 +13,6 @@ from homeassistant.const import CONF_PASSWORD, CONF_USERNAME, Platform
 from homeassistant.data_entry_flow import FlowResult
 from homeassistant.exceptions import HomeAssistantError
 from homeassistant.exceptions import HomeAssistantError
-# Removed async_create_clientsession import
 from .aioaquarea import Client, AuthenticationError, AuthenticationErrorCodes # Explicit import
 from .aioaquarea.errors import RequestFailedError # Explicit import
 from .const import DOMAIN
@@ -31,7 +30,6 @@ class AquareaConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     VERSION = 1
 
     _username: str | None = None
-    _session: aiohttp.ClientSession | None = None
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -129,25 +127,24 @@ class AquareaConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     async def _validate_input(self, username, password) -> dict[str, str]:
         """Validate the user input allows us to connect."""
         errors = {}
-        if self._session is None:
-            self._session = async_create_clientsession(self.hass)
-        self._api = aioaquarea.AquareaClient(self._session, username, password) # Changed to AquareaClient
-        try:
-            await self._api.login()
-        except aioaquarea.AuthenticationError as err:
-            if err.error_code in (
-                aioaquarea.AuthenticationErrorCodes.INVALID_USERNAME_OR_PASSWORD,
-                aioaquarea.AuthenticationErrorCodes.INVALID_CREDENTIALS,
-            ):
-                errors["base"] = "invalid_auth"
-            else:
+        async with aiohttp.ClientSession() as session:
+            self._api = aioaquarea.AquareaClient(session, username, password)
+            try:
+                await self._api.login()
+            except aioaquarea.AuthenticationError as err:
+                if err.error_code in (
+                    aioaquarea.AuthenticationErrorCodes.INVALID_USERNAME_OR_PASSWORD,
+                    aioaquarea.AuthenticationErrorCodes.INVALID_CREDENTIALS,
+                ):
+                    errors["base"] = "invalid_auth"
+                else:
+                    errors["base"] = "unknown"
+            except aioaquarea.errors.RequestFailedError:
+                _LOGGER.exception("Request failed during validation") # Added logging
+                errors["base"] = "cannot_connect"
+            except Exception:  # pylint: disable=broad-except
+                _LOGGER.exception("Unexpected exception during validation") # Added logging
                 errors["base"] = "unknown"
-        except aioaquarea.errors.RequestFailedError:
-            _LOGGER.exception("Request failed during validation") # Added logging
-            errors["base"] = "cannot_connect"
-        except Exception:  # pylint: disable=broad-except
-            _LOGGER.exception("Unexpected exception during validation") # Added logging
-            errors["base"] = "unknown"
         return errors
 
 
