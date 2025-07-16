@@ -24,18 +24,22 @@ def auth_required(fn):
                 f"{client}: API Error: {getattr(exception, 'error_code', 'N/A')} - {getattr(exception, 'error_message', str(exception))}."
             )
 
-            # If the error is invalid credentials or missing token, try to re-login.
-            # Also check for specific messages indicating token issues.
-            if (
-                (isinstance(exception, AuthenticationError) and exception.error_code == AuthenticationErrorCodes.INVALID_USERNAME_OR_PASSWORD)
-                or (isinstance(exception, ApiError) and "Missing Authentication Token" in str(exception))
-                or not client.is_refresh_login_enabled
-            ):
+            # If the error is invalid credentials, always raise.
+            if isinstance(exception, AuthenticationError) and exception.error_code == AuthenticationErrorCodes.INVALID_USERNAME_OR_PASSWORD:
                 raise
 
-            client.logger.warning(f"{client}: Trying to login again.")
-            await client.login()
-            response = await fn(client, *args, **kwargs)
+            # If refresh is not enabled, always raise.
+            if not client.is_refresh_login_enabled:
+                raise
+
+            # If it's an ApiError with "Missing Authentication Token", try to re-login.
+            if isinstance(exception, ApiError) and "Missing Authentication Token" in str(exception):
+                client.logger.warning(f"{client}: Trying to login again.")
+                await client.login()
+                response = await fn(client, *args, **kwargs)
+            else:
+                # For any other unhandled AuthenticationError or ApiError, re-raise.
+                raise
 
         return response
 
