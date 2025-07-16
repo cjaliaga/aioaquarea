@@ -187,9 +187,8 @@ class HeatPumpClimate(AquareaBaseEntity, ClimateEntity):
             )
             # Optimistically update the target temperature
             self._attr_target_temperature = temperature
-
-            await self.coordinator.async_refresh()
-            self.async_write_ha_state()
+            self.async_write_ha_state() # Push optimistic update immediately
+            await self.coordinator.async_refresh() # Then refresh in background
 
     async def async_set_preset_mode(self, preset_mode: str) -> None:
         """Set new target preset mode."""
