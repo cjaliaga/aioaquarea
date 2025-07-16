@@ -95,11 +95,9 @@ class WaterHeater(AquareaBaseEntity, WaterHeaterEntity):
         else:
             self._attr_icon = "mdi:water-boiler"
             self._attr_state = STATE_HEAT_PUMP
-            self._attr_current_operation = (
-                HEATING
-                if self.coordinator.device.current_action == DeviceAction.HEATING_WATER
-                else IDLE
-            )
+            # If the tank is on, its current operation should be HEATING
+            # regardless of whether it's actively heating water or just idle.
+            self._attr_current_operation = HEATING
 
     def _update_temperature(self) -> None:
         if not self.coordinator.device.tank: # Check if tank exists
@@ -125,14 +123,14 @@ class WaterHeater(AquareaBaseEntity, WaterHeaterEntity):
             )
             await self.coordinator.device.tank.set_target_temperature(int(temperature))
 
-    async def async_set_operation_mode(self, operation_mode):
+    async def async_set_operation_mode(self, operation_mode: str) -> None:
         _LOGGER.debug(
-            "Turning %s water tank %s",
+            "Received request to set water tank operation mode for %s to %s",
             self.coordinator.device.device_name,
             operation_mode,
         )
         if not self.coordinator.device.tank:
-            _LOGGER.warning("Attempted to set operation mode on a water heater with no tank object.")
+            _LOGGER.warning("Attempted to set operation mode on a water heater with no tank object. Operation mode: %s", operation_mode)
             return
 
         if operation_mode == HEATING:
