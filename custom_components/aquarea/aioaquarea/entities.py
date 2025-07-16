@@ -1,12 +1,13 @@
 import asyncio
 import datetime as dt
+import logging # Import logging
 from typing import Optional, TYPE_CHECKING
 
 from .data import (
     Device,
     DeviceInfo,
     DeviceModeStatus,
-    DeviceStatus, # Added DeviceStatus
+    DeviceStatus,
     OperationStatus,
     Tank,
     TankStatus,
@@ -19,22 +20,24 @@ from .data import (
     SpecialStatus,
     ZoneTemperatureSetUpdate,
     ExtendedOperationMode,
-    StatusDataMode, # Added StatusDataMode
-    DeviceZoneInfo, # Added DeviceZoneInfo
-    OperationMode, # Added OperationMode
+    StatusDataMode,
+    DeviceZoneInfo,
+    OperationMode,
 )
 from .errors import DataNotAvailableError
 from .statistics import ConsumptionType, DateType
 
 if TYPE_CHECKING:
-    from .core import AquareaClient # Import the renamed client class for type checking only
+    from .core import AquareaClient
+
+_LOGGER = logging.getLogger(__name__) # Define logger
 
 class TankImpl(Tank):
     """Tank implementation."""
 
-    _client: "AquareaClient" # Use string literal for forward reference
+    _client: "AquareaClient"
 
-    def __init__(self, status: TankStatus, device: Device, client: "AquareaClient") -> None: # Use string literal for forward reference
+    def __init__(self, status: TankStatus, device: Device, client: "AquareaClient") -> None:
         super().__init__(status, device)
         self._client = client
 
@@ -60,9 +63,9 @@ class DeviceImpl(Device):
         firmware_version: str,
         model: str,
         has_tank: bool,
-        zones_info: list[DeviceZoneInfo], # Corrected type hint
+        zones_info: list[DeviceZoneInfo],
         status: DeviceStatus,
-        client: "AquareaClient", # Updated type hint to string literal
+        client: "AquareaClient",
         consumption_refresh_interval: Optional[dt.timedelta] = None,
         timezone: dt.timezone = dt.timezone.utc,
     ) -> None:
@@ -71,12 +74,12 @@ class DeviceImpl(Device):
             device_id=device_id,
             name=name,
             long_id=long_id,
-            mode=OperationMode.Heat, # Corrected to use 'Heat' as defined in data.py
+            mode=OperationMode.Heat,
             has_tank=has_tank,
             firmware_version=firmware_version,
             model=model,
             zones=zones_info,
-            status_data_mode=StatusDataMode.LIVE # Assuming a default status data mode
+            status_data_mode=StatusDataMode.LIVE
         )
         super().__init__(device_info, status)
         self._client = client
@@ -88,17 +91,34 @@ class DeviceImpl(Device):
         if self.has_tank and self._status.tank_status:
             self._tank = TankImpl(self._status.tank_status[0], self, self._client)
 
-    async def refresh_data(self) -> None:
-        self._status = await self._client.get_device_status(self._info) # Pass the DeviceInfo object
+    async def refresh_data(self, expected_temperature: int | None = None, zone_id: int | None = None) -> None:
+        """Refreshes the device data, optionally waiting for a specific temperature."""
+        max_retries = 5
+        retry_delay = 1  # seconds
 
-        if self.has_tank and self._status.tank_status: # Added check for non-empty tank_status
-            self._tank = TankImpl(self._status.tank_status[0], self, self._client)
+        for i in range(max_retries):
+            self._status = await self._client.get_device_status(self._info)
 
-        # The __build_zones__ method is part of the base Device class and uses info.zones,
-        # which is now correctly populated by the DeviceInfo object passed to super().__init__.
-        # So, this line is no longer needed here.
-        # self.__build_zones__(self.zones_info)
+            if expected_temperature is not None and zone_id is not None:
+                zone = self._status.zones.get(zone_id)
+                if zone:
+                    # Check if the current temperature matches the expected temperature
+                    # Use the correct target temperature based on the current mode
+                    if self.mode in (ExtendedOperationMode.COOL, ExtendedOperationMode.AUTO_COOL):
+                        current_temp = zone.cool_target_temperature
+                    else:
+                        current_temp = zone.heat_target_temperature
 
+                    if current_temp == expected_temperature:
+                        _LOGGER.debug(f"Temperature for zone {zone_id} matched expected {expected_temperature} after {i+1} retries.")
+                        break # Temperature matched, exit loop
+                _LOGGER.debug(f"Temperature for zone {zone_id} is {current_temp if zone else 'N/A'}, expected {expected_temperature}. Retrying...")
+            
+            if i < max_retries - 1:
+                await asyncio.sleep(retry_delay)
+        else:
+            if expected_temperature is not None and zone_id is not None:
+                _LOGGER.warning(f"Temperature for zone {zone_id} did not match expected {expected_temperature} after {max_retries} retries. Using last fetched value.")
 
         if self._consumption:
             await self.__refresh_consumption__()
