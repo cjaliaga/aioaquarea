@@ -17,6 +17,7 @@ from .const import ATTRIBUTION, CLIENT, DEVICES, DOMAIN
 from .coordinator import AquareaDataUpdateCoordinator
 
 _LOGGER = logging.getLogger(__name__)
+logging.getLogger("custom_components.aquarea.aioaquarea").setLevel(logging.DEBUG) # Set aioaquarea logging to DEBUG
 
 PLATFORMS: list[Platform] = [
     Platform.CLIMATE,
