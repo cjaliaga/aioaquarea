@@ -32,9 +32,10 @@ def auth_required(fn):
             if not client.is_refresh_login_enabled:
                 raise
 
-            # If it's an ApiError with "Missing Authentication Token", try to re-login.
-            if isinstance(exception, ApiError) and "Missing Authentication Token" in str(exception):
-                client.logger.warning(f"{client}: Trying to login again.")
+            # If it's an ApiError with "Missing Authentication Token" or AuthenticationError with TOKEN_EXPIRED, try to re-login.
+            if (isinstance(exception, ApiError) and "Missing Authentication Token" in str(exception)) or \
+               (isinstance(exception, AuthenticationError) and exception.error_code == AuthenticationErrorCodes.TOKEN_EXPIRED):
+                client.logger.warning(f"{client}: Token expired or missing. Trying to login again.")
                 await client.login()
                 response = await fn(client, *args, **kwargs)
             else:
