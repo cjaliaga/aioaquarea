@@ -45,8 +45,7 @@ class TankImpl(Tank):
         await self._client.post_device_tank_temperature(self._device.device_id, value)
 
     async def __set_operation_status__(
-        self, status: OperationStatus, device_status: OperationStatus
-    ) -> None:
+        self, status: OperationStatus) -> None:
         await self._client.post_device_tank_operation_status(
             self._device.device_id, status
         )

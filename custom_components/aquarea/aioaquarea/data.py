@@ -514,22 +514,13 @@ class Tank(ABC):
     async def turn_off(self) -> None:
         """Turn off the tank"""
         if self.operation_status == OperationStatus.ON:
-            # Check if device has any active zones
-            device_status = (
-                OperationStatus.ON
-                if any(
-                    zone.operation_status == OperationStatus.ON
-                    for zone in self._device.zones.values()
-                )
-                else OperationStatus.OFF
-            )
-            await self.__set_operation_status__(OperationStatus.OFF, device_status)
+            await self.__set_operation_status__(OperationStatus.OFF)
 
     async def turn_on(self) -> None:
         """Turn on the tank"""
         if self.operation_status == OperationStatus.OFF:
             # Check if device has any active zones
-            await self.__set_operation_status__(OperationStatus.ON, OperationStatus.ON)
+            await self.__set_operation_status__(OperationStatus.ON)
 
 
 class Device(ABC):
