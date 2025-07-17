@@ -51,14 +51,17 @@ class AquareaConsumptionManager:
             )
 
             date_data = await response.json()
+            _LOGGER.debug("Received consumption data: %s", date_data) # Added debug log
             if date_data and date_data.get("dateData"): # Check if dateData exists and is not empty
+                _LOGGER.debug("Processing dateData: %s", date_data["dateData"][0]) # Added debug log
                 return Consumption(date_data["dateData"][0])
             else:
                 _LOGGER.warning(
-                    "No consumption data found for device %s, date %s, aggregation %s",
+                    "No consumption data found for device %s, date %s, aggregation %s. Full response: %s", # Modified warning
                     long_id,
                     date_input,
                     aggregation,
+                    date_data, # Added full response to warning
                 )
                 return None
         except (ApiError, AuthenticationError) as ex:
