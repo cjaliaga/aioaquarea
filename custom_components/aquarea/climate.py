@@ -141,10 +141,10 @@ class HeatPumpClimate(AquareaBaseEntity, ClimateEntity):
         self._attr_min_temp = zone.temperature
         if zone.supports_set_temperature and device.mode != ExtendedOperationMode.OFF:
             self._attr_max_temp = (
-                zone.cool_max if device.mode in (ExtendedOperationMode.COOL, ExtendedOperationMode.AUTO_COOL) else device.heat_max
+                zone.cool_max if device.mode in (ExtendedOperationMode.COOL, ExtendedOperationMode.AUTO_COOL) else zone.heat_max
             )
             self._attr_min_temp = (
-                zone.cool_min if device.mode in (ExtendedOperationMode.COOL, ExtendedOperationMode.AUTO_COOL) else device.heat_min
+                zone.cool_min if device.mode in (ExtendedOperationMode.COOL, ExtendedOperationMode.AUTO_COOL) else zone.heat_min
             )
         self._attr_target_temperature = (
             zone.cool_target_temperature if device.mode in (
