@@ -239,9 +239,11 @@ class AquareaClient: # Renamed Client to AquareaClient
         mode: UpdateOperationMode,
         zones: dict[int, OperationStatus],
         operation_status: OperationStatus,
+        tank_operation_status: OperationStatus,
+        zone_temperature_updates: list[ZoneTemperatureSetUpdate] | None = None,
     ) -> None:
         """Post device operation update."""
-        return await self._device_control.post_device_operation_update(long_id, mode, zones, operation_status)
+        return await self._device_control.post_device_operation_update(long_id, mode, zones, operation_status, tank_operation_status, zone_temperature_updates)
 
     @auth_required
     async def post_device_set_special_status(
