@@ -48,7 +48,7 @@ class TankImpl(Tank):
         self, status: OperationStatus, device_status: OperationStatus
     ) -> None:
         await self._client.post_device_tank_operation_status(
-            self._device.device_id, status, device_status
+            self._device.device_id, status
         )
 
 
