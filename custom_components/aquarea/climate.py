@@ -149,7 +149,7 @@ class HeatPumpClimate(AquareaBaseEntity, ClimateEntity):
         self._attr_target_temperature = (
             zone.cool_target_temperature if device.mode in (
                 ExtendedOperationMode.COOL, ExtendedOperationMode.AUTO_COOL,
-            ) else device.heat_target_temperature
+            ) else zone.heat_target_temperature
         )
         self._attr_target_temperature_step = 1
         super()._handle_coordinator_update()
