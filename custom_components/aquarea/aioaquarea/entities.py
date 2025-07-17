@@ -87,6 +87,7 @@ class DeviceImpl(Device):
         self._last_consumption_refresh: dt.datetime | None = None
         self._consumption_refresh_lock = asyncio.Lock()
         self._consumption_refresh_interval = consumption_refresh_interval
+        self._consumption: dict[dt.datetime, Consumption | None] = {} # Initialize _consumption
 
         if self.has_tank and self._status.tank_status:
             self._tank = TankImpl(self._status.tank_status[0], self, self._client)
@@ -116,7 +117,7 @@ class DeviceImpl(Device):
                 and self._last_consumption_refresh is not None
                 and dt.datetime.now(self._timezone) - self._last_consumption_refresh
                 < self._consumption_refresh_interval
-                and None not in self._consumption.values()
+                and all(x is not None for x in self._consumption.values()) # Changed condition
             ):
                 return
 

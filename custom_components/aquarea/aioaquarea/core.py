@@ -94,7 +94,7 @@ class AquareaClient: # Renamed Client to AquareaClient
         self._device_manager = DeviceManager(self, self._settings, self._app_version, self._logger)
         self._api_client = AquareaAPIClient(self._sess, self._settings, self._app_version, self._environment, self._logger)
         self._device_control = AquareaDeviceControl(self._api_client, self._base_url)
-        self._consumption_manager = AquareaConsumptionManager(self._api_client, self._base_url)
+        self._consumption_manager = AquareaConsumptionManager(self._api_client, self._base_url, dt.timezone.utc) # Pass timezone
         self._settings.username = username
         self._settings.password = password
         self._settings.access_token = self._api_client.access_token
