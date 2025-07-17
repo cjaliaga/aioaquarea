@@ -46,8 +46,10 @@ class TankImpl(Tank):
 
     async def __set_operation_status__(
         self, status: OperationStatus) -> None:
+        # Get current zone statuses from the device
+        zones_status = list(self._device.zones.values())
         await self._client.post_device_tank_operation_status(
-            self._device.device_id, status
+            self._device.device_id, status, zones_status
         )
 
 

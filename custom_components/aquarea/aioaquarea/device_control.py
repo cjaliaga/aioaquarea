@@ -17,6 +17,7 @@ from .data import (
     UpdateOperationMode,
     ZoneTemperatureSetUpdate,
     SpecialStatus,
+    DeviceZoneStatus,
 )
 from .auth import PanasonicRequestHeader
 
@@ -80,13 +81,24 @@ class AquareaDeviceControl:
         self,
         long_device_id: str,
         new_operation_status: OperationStatus,
+        zones: list[DeviceZoneStatus],
     ) -> None:
         """Post device tank operation status."""
+        zone_status_list = []
+        for zone in zones:
+            zone_status_list.append(
+                {
+                    "zoneId": zone.zone_id,
+                    "operationStatus": zone.operation_status.value,
+                }
+            )
+
         data = {
             "apiName": "/remote/v1/api/devices",
             "requestMethod": "POST",
             "bodyParam": {
                 "gwid": long_device_id,
+                "zoneStatus": zone_status_list,
                 "tankStatus": {
                     "operationStatus": new_operation_status.value
                 }

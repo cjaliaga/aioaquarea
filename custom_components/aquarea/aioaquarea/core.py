@@ -19,6 +19,7 @@ from .data import (
     Device,
     DeviceInfo,
     DeviceStatus,
+    DeviceZoneStatus,
     ForceDHW,
     ForceHeater,
     HolidayTimer,
@@ -227,9 +228,10 @@ class AquareaClient: # Renamed Client to AquareaClient
         self,
         long_device_id: str,
         new_operation_status: OperationStatus,
+        zones: list[DeviceZoneStatus],
     ) -> None:
         """Post device tank operation status."""
-        return await self._device_control.post_device_tank_operation_status(long_device_id, new_operation_status)
+        return await self._device_control.post_device_tank_operation_status(long_device_id, new_operation_status, zones)
 
     @auth_required
     async def post_device_operation_update(
