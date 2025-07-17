@@ -507,7 +507,7 @@ class Tank(ABC):
 
     @abstractmethod
     async def __set_operation_status__(
-        self, status: OperationStatus, device_status: OperationStatus
+        self, status: OperationStatus
     ) -> None:
         """Set the operation status of the device"""
 

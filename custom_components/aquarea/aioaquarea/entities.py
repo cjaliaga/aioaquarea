@@ -247,9 +247,6 @@ class DeviceImpl(Device):
 
         :param force_dhw: Set the Force DHW mode if the device has a tank.
         """
-        if not self.has_tank:
-            return
-
         await self._client.post_device_force_dhw(self.long_id, force_dhw)
 
     async def set_force_heater(self, force_heater: ForceHeater) -> None:
