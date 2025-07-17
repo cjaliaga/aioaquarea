@@ -227,10 +227,9 @@ class AquareaClient: # Renamed Client to AquareaClient
         self,
         long_device_id: str,
         new_operation_status: OperationStatus,
-        new_device_operation_status: OperationStatus = OperationStatus.ON,
     ) -> None:
         """Post device tank operation status."""
-        return await self._device_control.post_device_tank_operation_status(long_device_id, new_operation_status, new_device_operation_status)
+        return await self._device_control.post_device_tank_operation_status(long_device_id, new_operation_status)
 
     @auth_required
     async def post_device_operation_update(

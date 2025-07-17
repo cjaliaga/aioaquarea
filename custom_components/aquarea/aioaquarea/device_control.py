@@ -80,7 +80,6 @@ class AquareaDeviceControl:
         self,
         long_device_id: str,
         new_operation_status: OperationStatus,
-        new_device_operation_status: OperationStatus = OperationStatus.ON, # This parameter might become obsolete or need re-evaluation based on the new structure
     ) -> None:
         """Post device tank operation status."""
         data = {
