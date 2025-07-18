@@ -33,12 +33,18 @@ class AquareaConsumptionManager:
             offset_minutes = int((offset_seconds % 3600) / 60)
             timezone_str = f"{offset_hours:+03d}:{offset_minutes:02d}"
 
+            data_mode_map = {
+                DateType.DAY: 0,
+                DateType.MONTH: 1,
+                DateType.YEAR: 2,
+                # Add other mappings if WEEK is ever used for consumption API
+            }
             payload = {
                 "apiName": "/remote/v1/api/consumption",
                 "requestMethod": "POST",
                 "bodyParam": {
                     "gwid": long_id,
-                    "dataMode": int(aggregation.value),
+                    "dataMode": data_mode_map.get(aggregation, 0), # Default to 0 (DAY) if not found
                     "date": date_input,
                     "osTimezone": timezone_str,
                 },
