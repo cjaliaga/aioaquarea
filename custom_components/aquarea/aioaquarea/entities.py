@@ -2,6 +2,7 @@ import asyncio
 import datetime as dt
 import logging
 from typing import Optional, TYPE_CHECKING
+from homeassistant.core import HomeAssistant # Import HomeAssistant
 
 from .data import (
     Device,
@@ -67,6 +68,7 @@ class DeviceImpl(Device):
         zones_info: list[DeviceZoneInfo],
         status: DeviceStatus,
         client: "AquareaClient",
+        hass: HomeAssistant, # Add hass parameter
         consumption_refresh_interval: Optional[dt.timedelta] = None,
         timezone: dt.timezone = dt.timezone.utc,
     ) -> None:
@@ -88,10 +90,15 @@ class DeviceImpl(Device):
         self._last_consumption_refresh: dt.datetime | None = None
         self._consumption_refresh_lock = asyncio.Lock()
         self._consumption_refresh_interval = consumption_refresh_interval
-        self._consumption: dict[dt.datetime, Consumption | None] = {} # Initialize _consumption
-
+        self._consumption: dict[dt.date, list[Consumption]] = {} # Initialize _consumption with dt.date as key and list of Consumption
+        self.hass = hass # Store hass
+        
         if self.has_tank and self._status.tank_status:
             self._tank = TankImpl(self._status.tank_status[0], self, self._client)
+
+        # Trigger initial consumption data refresh
+        if self._consumption_refresh_interval:
+            self.hass.async_create_task(self.__refresh_consumption__())
 
     @property
     def heat_max(self) -> int | None:
@@ -116,7 +123,7 @@ class DeviceImpl(Device):
 
     async def __refresh_consumption__(self) -> None:
         """Refreshes the consumption data."""
-        if not self._consumption:
+        if not self._consumption_refresh_interval:
             return
 
         if self._consumption_refresh_lock.locked():
@@ -125,28 +132,27 @@ class DeviceImpl(Device):
         await self._consumption_refresh_lock.acquire()
 
         try:
-            if (
-                self._consumption_refresh_interval is not None
-                and self._last_consumption_refresh is not None
-                and dt.datetime.now(self._timezone) - self._last_consumption_refresh
-                < self._consumption_refresh_interval
-                and all(x is not None for x in self._consumption.values()) # Changed condition
-            ):
-                return
-
             now = dt.datetime.now(self._timezone)
-            for date in self._consumption:
-                if (
-                    now - date > dt.timedelta(days=2)
-                    and self._consumption.get(date) is not None
-                ):
-                    continue
+            today = now.date()
 
-                self._consumption[date] = await self._client.get_device_consumption(
-                    self.long_id, DateType.DAY, date.strftime("%Y-%m-%d")
+            # Check if we need to refresh for today
+            if (
+                self._last_consumption_refresh is None
+                or (now - self._last_consumption_refresh) >= self._consumption_refresh_interval
+                or today not in self._consumption # If it's a new day, refresh
+            ):
+                _LOGGER.debug("Refreshing consumption data for %s", today)
+                consumption_list = await self._client.get_device_consumption(
+                    self.long_id, DateType.DAY, today.strftime("%Y%m%d")
                 )
+                if consumption_list:
+                    self._consumption[today] = consumption_list
+                    self._last_consumption_refresh = now
+                else:
+                    _LOGGER.warning("Failed to retrieve consumption data for %s", today)
+            else:
+                _LOGGER.debug("Consumption data for %s is still fresh, skipping refresh", today)
 
-            self._last_consumption_refresh = dt.datetime.now(self._timezone)
         finally:
             self._consumption_refresh_lock.release()
 
@@ -225,19 +231,29 @@ class DeviceImpl(Device):
     async def get_and_refresh_consumption(
         self, date: dt.datetime, consumption_type: ConsumptionType
     ) -> float | None:
-        """Retrieve consumption data and asyncronously refreshes if necessary for the specified date and type.
+        """Retrieve consumption data and asynchronously refreshes if necessary for the specified date and type.
 
         :param date: The date to get the consumption for
         :param consumption_type: The consumption type to get.
         """
+        day = date.date()
+        await self.__refresh_consumption__() # Ensure data is fresh
 
-        day = date.replace(hour=0, minute=0, second=0, microsecond=0)
+        hourly_data_list = self._consumption.get(day)
+        if not hourly_data_list:
+            raise DataNotAvailableError(f"Consumption for {day} is not yet available")
 
-        self._consumption[day] = await self._client.get_device_consumption(
-            self.long_id, DateType.DAY, date.strftime("%Y-%m-%d")
-        )
-
-        return self._consumption[day].energy.get(consumption_type)[date.hour]
+        # Find the consumption object for the specific hour
+        for consumption_obj in hourly_data_list:
+            if consumption_obj.data_time and int(consumption_obj.data_time[-2:]) == date.hour:
+                if consumption_type == ConsumptionType.HEAT:
+                    return consumption_obj.heat_consumption
+                elif consumption_type == ConsumptionType.COOL:
+                    return consumption_obj.cool_consumption
+                elif consumption_type == ConsumptionType.WATER_TANK:
+                    return consumption_obj.tank_consumption
+                # Add other consumption types if needed
+        return None # Or raise an error if data for the specific hour is not found
 
     def get_or_schedule_consumption(
         self, date: dt.datetime, consumption_type: ConsumptionType
@@ -246,15 +262,25 @@ class DeviceImpl(Device):
         :param date: The date to get the consumption for
         :param consumption_type: The consumption type to get
         """
+        day = date.date()
+        hourly_data_list = self._consumption.get(day)
 
-        day = date.replace(hour=0, minute=0, second=0, microsecond=0)
-        consumption = self._consumption.get(day, None)
+        if not hourly_data_list:
+            # Schedule a refresh if data is not available
+            self.hass.async_create_task(self.__refresh_consumption__())
+            raise DataNotAvailableError(f"Consumption for {day} is not yet available. Scheduling refresh.")
 
-        if consumption is None:
-            self._consumption[day] = None
-            raise DataNotAvailableError(f"Consumption for {day} is not yet available")
-
-        return consumption.energy.get(consumption_type)[date.hour]
+        # Find the consumption object for the specific hour
+        for consumption_obj in hourly_data_list:
+            if consumption_obj.data_time and int(consumption_obj.data_time[-2:]) == date.hour:
+                if consumption_type == ConsumptionType.HEAT:
+                    return consumption_obj.heat_consumption
+                elif consumption_type == ConsumptionType.COOL:
+                    return consumption_obj.cool_consumption
+                elif consumption_type == ConsumptionType.WATER_TANK:
+                    return consumption_obj.tank_consumption
+                # Add other consumption types if needed
+        return None # Or raise an error if data for the specific hour is not found
 
     async def set_force_dhw(self, force_dhw: ForceDHW) -> None:
         """Set the force dhw.

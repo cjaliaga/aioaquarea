@@ -179,6 +179,7 @@ class AquareaClient: # Renamed Client to AquareaClient
     @auth_required
     async def get_device(
         self,
+        hass: HomeAssistant,
         device_info: DeviceInfo | None = None,
         device_id: str | None = None,
         consumption_refresh_interval: Optional[dt.timedelta] = None,
@@ -205,6 +206,7 @@ class AquareaClient: # Renamed Client to AquareaClient
             device_info.zones,
             device_status,
             self,
+            hass,
             consumption_refresh_interval,
             timezone,
         )
