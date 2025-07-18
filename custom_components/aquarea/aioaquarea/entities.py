@@ -143,7 +143,7 @@ class DeviceImpl(Device):
             ):
                 _LOGGER.debug("Refreshing consumption data for %s", current_month.strftime("%Y%m"))
                 consumption_list = await self._client.get_device_consumption(
-                    self.long_id, DateType.MONTH, now.strftime("%Y%m")
+                    self.long_id, DateType.MONTH, now.strftime("%Y%m01") # Use YYYYMM01 for month mode
                 )
                 if consumption_list:
                     # Clear previous month's data if any
