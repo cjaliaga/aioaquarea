@@ -3,6 +3,7 @@ import datetime as dt
 import logging
 from typing import Optional, TYPE_CHECKING
 from homeassistant.core import HomeAssistant # Import HomeAssistant
+from homeassistant.util import dt as dt_util # Import dt_util
 
 from .data import (
     Device,
@@ -154,8 +155,10 @@ class DeviceImpl(Device):
                             item_date_str = item.data_time
                             if item_date_str:
                                 # dataTime is YYYYMMDD for month mode
-                                item_date = dt.datetime.strptime(item_date_str, "%Y%m%d").date()
+                                # Ensure consistency with Home Assistant's date handling
+                                item_date = dt_util.as_local(dt.datetime.strptime(item_date_str, "%Y%m%d")).date()
                                 self._consumption[item_date] = item
+                                _LOGGER.debug("Stored consumption for date: %s, data: %s", item_date, item.raw_data) # Add debug log
                         except ValueError:
                             _LOGGER.warning("Could not parse date from consumption item: %s", item.data_time)
                     self._last_consumption_refresh = now
