@@ -88,6 +88,18 @@ class Consumption:
         return self._outdoor_temp
 
     @property
+    def total_consumption(self) -> float | None:
+        """Total consumption in kWh (sum of heat, cool, and tank consumption)"""
+        total = 0.0
+        if self._heat_consumption is not None:
+            total += self._heat_consumption
+        if self._cool_consumption is not None:
+            total += self._cool_consumption
+        if self._tank_consumption is not None:
+            total += self._tank_consumption
+        return total if total > 0 else None
+
+    @property
     def raw_data(self) -> dict[str, object]:
         """Raw data from the API response"""
         return self._data
