@@ -36,8 +36,8 @@ class AquareaEnergyConsumptionSensorDescription(SensorEntityDescription):
 ACCUMULATED_ENERGY_SENSORS: list[AquareaEnergyConsumptionSensorDescription] = [
     AquareaEnergyConsumptionSensorDescription(
         key="heating_accumulated_energy_consumption",
-        translation_key="heating_accumulated_energy_consumption",
-        name="Heating Accumulated Consumption",
+        translation_key="heating_monthly_accumulated_energy_consumption",
+        name="Heating Monthly Accumulated Consumption",
         device_class=SensorDeviceClass.ENERGY,
         state_class=SensorStateClass.TOTAL_INCREASING,
         native_unit_of_measurement=UnitOfEnergy.KILO_WATT_HOUR,
@@ -46,8 +46,8 @@ ACCUMULATED_ENERGY_SENSORS: list[AquareaEnergyConsumptionSensorDescription] = [
     ),
     AquareaEnergyConsumptionSensorDescription(
         key="cooling_accumulated_energy_consumption",
-        translation_key="cooling_accumulated_energy_consumption",
-        name= "Cooling Accumulated Consumption",
+        translation_key="cooling_monthly_accumulated_energy_consumption",
+        name= "Cooling Monthly Accumulated Consumption",
         device_class=SensorDeviceClass.ENERGY,
         state_class=SensorStateClass.TOTAL_INCREASING,
         native_unit_of_measurement=UnitOfEnergy.KILO_WATT_HOUR,
@@ -57,8 +57,8 @@ ACCUMULATED_ENERGY_SENSORS: list[AquareaEnergyConsumptionSensorDescription] = [
     ),
     AquareaEnergyConsumptionSensorDescription(
         key="tank_accumulated_energy_consumption",
-        translation_key = "tank_accumulated_energy_consumption",
-        name= "Tank Accumulated Consumption",
+        translation_key = "tank_monthly_accumulated_energy_consumption",
+        name= "Tank Monthly Accumulated Consumption",
         device_class=SensorDeviceClass.ENERGY,
         state_class=SensorStateClass.TOTAL_INCREASING,
         native_unit_of_measurement=UnitOfEnergy.KILO_WATT_HOUR,
@@ -68,8 +68,8 @@ ACCUMULATED_ENERGY_SENSORS: list[AquareaEnergyConsumptionSensorDescription] = [
     ),
     AquareaEnergyConsumptionSensorDescription(
         key="accumulated_energy_consumption",
-        translation_key="accumulated_energy_consumption",
-        name= "Accumulated Consumption",
+        translation_key="monthly_accumulated_energy_consumption",
+        name= "Monthly Accumulated Consumption",
         device_class=SensorDeviceClass.ENERGY,
         state_class=SensorStateClass.TOTAL_INCREASING,
         native_unit_of_measurement=UnitOfEnergy.KILO_WATT_HOUR,
@@ -80,8 +80,8 @@ ACCUMULATED_ENERGY_SENSORS: list[AquareaEnergyConsumptionSensorDescription] = [
 ENERGY_SENSORS: list[AquareaEnergyConsumptionSensorDescription] = [
     AquareaEnergyConsumptionSensorDescription(
         key="heating_energy_consumption",
-        translation_key="heating_energy_consumption",
-        name="Heating Consumption",
+        translation_key="heating_monthly_energy_consumption",
+        name="Heating Monthly Consumption",
         device_class=SensorDeviceClass.ENERGY,
         state_class=SensorStateClass.TOTAL_INCREASING,
         native_unit_of_measurement=UnitOfEnergy.KILO_WATT_HOUR,
@@ -91,8 +91,8 @@ ENERGY_SENSORS: list[AquareaEnergyConsumptionSensorDescription] = [
     ),
     AquareaEnergyConsumptionSensorDescription(
         key="tank_energy_consumption",
-        translation_key="tank_energy_consumption",
-        name= "Tank Consumption",
+        translation_key="tank_monthly_energy_consumption",
+        name= "Tank Monthly Consumption",
         device_class=SensorDeviceClass.ENERGY,
         state_class=SensorStateClass.TOTAL_INCREASING,
         native_unit_of_measurement=UnitOfEnergy.KILO_WATT_HOUR,
@@ -103,8 +103,8 @@ ENERGY_SENSORS: list[AquareaEnergyConsumptionSensorDescription] = [
     ),
     AquareaEnergyConsumptionSensorDescription(
         key="cooling_energy_consumption",
-        translation_key="cooling_energy_consumption",
-        name= "Cooling Consumption",
+        translation_key="cooling_monthly_energy_consumption",
+        name= "Cooling Monthly Consumption",
         device_class=SensorDeviceClass.ENERGY,
         state_class=SensorStateClass.TOTAL_INCREASING,
         native_unit_of_measurement=UnitOfEnergy.KILO_WATT_HOUR,
@@ -115,8 +115,8 @@ ENERGY_SENSORS: list[AquareaEnergyConsumptionSensorDescription] = [
     ),
     AquareaEnergyConsumptionSensorDescription(
         key="energy_consumption",
-        translation_key="energy_consumption",
-        name= "Consumption",
+        translation_key="monthly_energy_consumption",
+        name= "Monthly Consumption",
         device_class=SensorDeviceClass.ENERGY,
         state_class=SensorStateClass.TOTAL_INCREASING,
         native_unit_of_measurement=UnitOfEnergy.KILO_WATT_HOUR,
@@ -321,6 +321,7 @@ class EnergyAccumulatedConsumptionSensor(
                 if value is not None:
                     total_consumption_for_month += value
         
+        _LOGGER.debug("Calculated accumulated consumption for %s: %s", self.unique_id, total_consumption_for_month)
         self._attr_native_value = total_consumption_for_month
         super()._handle_coordinator_update()
 
@@ -388,6 +389,7 @@ class EnergyConsumptionSensor(AquareaBaseEntity, SensorEntity, RestoreEntity):
             daily_consumption = device.get_or_schedule_consumption(
                 dt_util.now(), self.entity_description.consumption_type
             )
+            _LOGGER.debug("Daily consumption for %s (%s): %s", today, self.entity_description.consumption_type, daily_consumption)
             self._attr_native_value = daily_consumption if daily_consumption is not None else 0.0
         except DataNotAvailableError:
             _LOGGER.debug("Consumption data for %s is not yet available for sensor %s", today, self.unique_id)
