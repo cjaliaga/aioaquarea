@@ -1,9 +1,3 @@
-from aioaquarea import (
-    Client,
-    AquareaEnvironment,
-    UpdateOperationMode
-)
-
 import aiohttp
 import asyncio
 import logging

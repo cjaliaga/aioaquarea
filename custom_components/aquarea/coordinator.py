@@ -54,6 +54,7 @@ class AquareaDataUpdateCoordinator(DataUpdateCoordinator):
         try:
             # We are not getting consumption data on the first refresh, we'll get it on the next ones
             self._device = await self._client.get_device(
+                hass=self.hass, # Pass hass here
                 device_info=self._device_info,
                 consumption_refresh_interval=CONSUMPTION_REFRESH_INTERVAL,
                 timezone=dt_util.DEFAULT_TIME_ZONE,
