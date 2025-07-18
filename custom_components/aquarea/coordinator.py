@@ -62,6 +62,7 @@ class AquareaDataUpdateCoordinator(DataUpdateCoordinator):
             if err.error_code in (
                 AuthenticationErrorCodes.INVALID_USERNAME_OR_PASSWORD,
                 AuthenticationErrorCodes.INVALID_CREDENTIALS,
+                AuthenticationErrorCodes.TOKEN_EXPIRED,
             ):
                 raise ConfigEntryAuthFailed from err
         except RequestFailedError as err:

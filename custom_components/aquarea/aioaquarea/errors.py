@@ -14,11 +14,13 @@ class ClientError(Exception):
 class RequestFailedError(ClientError):
     """Exception raised when request to the server fails"""
 
-    def __init__(self, response):
+    def __init__(self, response: str | object):
         self.response = response
         super().__init__()
 
     def __str__(self):
+        if isinstance(self.response, str):
+            return self.response
         return f"Invalid response: {self.response.status} - {self.response.reason}"
 
 
