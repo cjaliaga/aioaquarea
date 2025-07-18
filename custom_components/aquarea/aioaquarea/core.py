@@ -196,7 +196,7 @@ class AquareaClient: # Renamed Client to AquareaClient
             )
 
         device_status = await self.get_device_status(device_info)
-        return DeviceImpl(
+        device_impl = DeviceImpl(
             device_info.device_id,
             device_info.long_id,
             device_info.name,
@@ -210,6 +210,10 @@ class AquareaClient: # Renamed Client to AquareaClient
             consumption_refresh_interval,
             timezone,
         )
+        # Ensure consumption data is refreshed during initial device setup
+        if consumption_refresh_interval:
+            await device_impl.__refresh_consumption__()
+        return device_impl
 
     @auth_required
     async def post_device_operation_status(

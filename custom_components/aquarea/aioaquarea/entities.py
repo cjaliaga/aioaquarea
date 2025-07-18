@@ -97,9 +97,9 @@ class DeviceImpl(Device):
         if self.has_tank and self._status.tank_status:
             self._tank = TankImpl(self._status.tank_status[0], self, self._client)
 
-        # Trigger initial consumption data refresh
-        if self._consumption_refresh_interval:
-            self.hass.async_create_task(self.__refresh_consumption__())
+        # The consumption data refresh is now triggered and awaited in AquareaClient.get_device
+        # if self._consumption_refresh_interval:
+        #     self.hass.async_create_task(self.__refresh_consumption__())
 
     @property
     def heat_max(self) -> int | None:
