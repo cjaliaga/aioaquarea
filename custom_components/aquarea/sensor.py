@@ -301,61 +301,28 @@ class EnergyAccumulatedConsumptionSensor(
             self.unique_id,
             self.coordinator.device.device_name,
         )
-        # we need to check the value for the current hour. If the device returns None means that we don't have yet data for the current hour. However the device might still update the previous hour data.
         device = self.coordinator.device
-        now = dt_util.now().replace(minute=0, second=0, microsecond=0)
-        previous_hour = now - timedelta(hours=1)
+        current_month_data = device._consumption # Access the internal dictionary directly
 
-        try:
-            current_hour_consumption = device.get_or_schedule_consumption(
-                now, self.entity_description.consumption_type
-            )
-            previous_hour_consumption = device.get_or_schedule_consumption(
-                previous_hour, self.entity_description.consumption_type
-            )
-        except DataNotAvailableError:
-            # we don't have yet data for the current hour but should be available on next refresh
-            return
-
-        # Stale data
-        if self._period_being_processed not in [now, previous_hour]:
-            self._period_being_processed = now
-            self._accumulated_period_being_processed = 0
-
-        # 1. When we already have data for the current hour and we were still updating the previous one. This means that the previous hour data is now complete and we can update the sensor value
-        if (
-            current_hour_consumption is not None
-            and previous_hour_consumption is not None
-            and self._period_being_processed == previous_hour
-        ):
-            to_add = abs(previous_hour_consumption - self._accumulated_period_being_processed)
-            self._attr_native_value += to_add
-            # Store the previous period as completed and move to next one
-            self._period_being_processed = now
-            self._accumulated_period_being_processed = 0
-            super()._handle_coordinator_update()
-            return
-
-        # 2. We're still processing the previous hour data and we don't have yet the current hour data. This means that we need to update the sensor value with the previous hour data
-        if (
-            current_hour_consumption is None
-            and previous_hour_consumption is not None
-            and self._period_being_processed == previous_hour
-        ):
-            to_add = abs(previous_hour_consumption - self._accumulated_period_being_processed)
-            self._attr_native_value += to_add
-            self._accumulated_period_being_processed = previous_hour_consumption
-            super()._handle_coordinator_update()
-            return
-
-        # 3. We're processing the current hour
-        if current_hour_consumption is not None:
-            self._period_being_processed = now
-            to_add = abs(current_hour_consumption - self._accumulated_period_being_processed)
-            self._attr_native_value += to_add
-            self._accumulated_period_being_processed = current_hour_consumption
-            super()._handle_coordinator_update()
-            return
+        total_consumption_for_month = 0.0
+        for date, consumption_obj in current_month_data.items():
+            # Only sum up data for the current month and up to the current day
+            if date.month == dt_util.now().month and date.year == dt_util.now().year and date.day <= dt_util.now().day:
+                value = None
+                if self.entity_description.consumption_type == ConsumptionType.HEAT:
+                    value = consumption_obj.heat_consumption
+                elif self.entity_description.consumption_type == ConsumptionType.COOL:
+                    value = consumption_obj.cool_consumption
+                elif self.entity_description.consumption_type == ConsumptionType.WATER_TANK:
+                    value = consumption_obj.tank_consumption
+                elif self.entity_description.consumption_type == ConsumptionType.TOTAL:
+                    value = consumption_obj.total_consumption
+                
+                if value is not None:
+                    total_consumption_for_month += value
+        
+        self._attr_native_value = total_consumption_for_month
+        super()._handle_coordinator_update()
 
 
 class EnergyConsumptionSensor(AquareaBaseEntity, SensorEntity, RestoreEntity):
@@ -413,59 +380,20 @@ class EnergyConsumptionSensor(AquareaBaseEntity, SensorEntity, RestoreEntity):
             self.unique_id,
             self.coordinator.device.device_name,
         )
-        # we need to check the value for the current hour. If the device returns None means that we don't have yet data for the current hour. However the device might still update the previous hour data.
         device = self.coordinator.device
-        now = dt_util.now().replace(minute=0, second=0, microsecond=0)
-        previous_hour = now - timedelta(hours=1)
+        today = dt_util.now().date()
 
         try:
-            current_hour_consumption = device.get_or_schedule_consumption(
-                now, self.entity_description.consumption_type
+            # Get the daily consumption for today
+            daily_consumption = device.get_or_schedule_consumption(
+                dt_util.now(), self.entity_description.consumption_type
             )
-            previous_hour_consumption = device.get_or_schedule_consumption(
-                previous_hour, self.entity_description.consumption_type
-            )
+            self._attr_native_value = daily_consumption if daily_consumption is not None else 0.0
         except DataNotAvailableError:
-            # we don't have yet data for the current hour but should be available on next refresh
-            return
+            _LOGGER.debug("Consumption data for %s is not yet available for sensor %s", today, self.unique_id)
+            self._attr_native_value = 0.0 # Set to 0 if data is not available
+        except Exception as ex:
+            _LOGGER.error("Error updating sensor %s: %s", self.unique_id, ex)
+            self._attr_native_value = 0.0 # Set to 0 on error
 
-        # Stale data, we reset to 0 to start a new cycle
-        if self._period_being_processed not in [now, previous_hour]:
-            self._period_being_processed = now
-            self._attr_native_value = 0
-            super()._handle_coordinator_update()
-            return
-
-        # 1. When we already have data for the current hour and we were still updating the previous one. This means that the previous hour data is now complete and we can update the sensor value
-        if (
-            current_hour_consumption is not None
-            and previous_hour_consumption is not None
-            and self._period_being_processed == previous_hour
-        ):
-            self._attr_native_value = previous_hour_consumption
-            self._period_being_processed = now # Store the previous period as completed
-            super()._handle_coordinator_update()
-            # Reset the value to 0 to start the new period
-            self._attr_native_value = 0
-            super()._handle_coordinator_update()
-            # Update the value with the current hour data
-            self._attr_native_value = current_hour_consumption
-            super()._handle_coordinator_update()
-            return
-
-        # 2. We're still processing the previous hour data and we don't have yet the current hour data. This means that we need to update the sensor value with the previous hour data
-        if (
-            current_hour_consumption is None
-            and previous_hour_consumption is not None
-            and self._period_being_processed == previous_hour
-        ):
-            self._attr_native_value = previous_hour_consumption
-            super()._handle_coordinator_update()
-            return
-
-        # 3. We're processing the current hour
-        if current_hour_consumption is not None:
-            self._period_being_processed = now
-            self._attr_native_value = current_hour_consumption
-            super()._handle_coordinator_update()
-            return
+        super()._handle_coordinator_update()
