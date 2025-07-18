@@ -93,6 +93,18 @@ class DeviceImpl(Device):
         if self.has_tank and self._status.tank_status:
             self._tank = TankImpl(self._status.tank_status[0], self, self._client)
 
+    @property
+    def heat_max(self) -> int | None:
+        """Gets the maximum allowed temperature for heat mode of the first zone"""
+        zone = self.zones.get(1)
+        return zone.heat_max if zone else None
+
+    @property
+    def cool_max(self) -> int | None:
+        """Gets the maximum allowed temperature for cool mode of the first zone"""
+        zone = self.zones.get(1)
+        return zone.cool_max if zone else None
+
     async def refresh_data(self) -> None:
         self._status = await self._client.get_device_status(self._info)
 
