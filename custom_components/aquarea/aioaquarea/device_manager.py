@@ -71,6 +71,7 @@ class DeviceManager:
 
                     for device_raw in device_list:
                         if device_raw:
+                            self._logger.info(f"Raw device response: {device_raw}")
                             device_id = device_raw.get("deviceGuid")
                             device_name = device_raw.get("deviceName", "Unknown Device")
                             operation_mode = OperationMode(device_raw.get("operationMode", 0)) # Default to 0 if not found
@@ -106,7 +107,7 @@ class DeviceManager:
                                 zones,
                                 StatusDataMode.LIVE # Added status_data_mode
                             )
-                            self._logger.debug(f"get_devices: Device {device_id} has_tank: {has_tank}, raw device_raw: {device_raw}")
+                            self._logger.info(f"get_devices: Device {device_id} has_tank: {has_tank}, raw device_raw: {device_raw}")
                             self._device_indexer[device_id] = device_id
                             self._devices.append(device_info)
         return self._devices + self._unknown_devices
@@ -126,7 +127,7 @@ class DeviceManager:
                 throw_on_error=True
             )
             json_response = await response.json()
-            self._logger.debug(f"get_device_status (live): Raw JSON response for device {device_info.device_id}: {json_response}")
+            self._logger.info(f"get_device_status (live): Raw JSON response for device {device_info.device_id}: {json_response}")
         except Exception as e:
             self._logger.warning("Failed to get live status for device {}: {}".format(device_info.device_id, e))
             # If live data fails, try cached data as a fallback
