@@ -111,7 +111,7 @@ ENERGY_SENSORS: list[AquareaEnergyConsumptionSensorDescription] = [
         suggested_display_precision=5, # Increased precision
         consumption_type=ConsumptionType.COOL,
         exists_fn=lambda coordinator: any(zone.cool_mode for zone in coordinator.device.zones.values()),
-        entity_registry_enabled_default=False
+        entity_registry_enabled_default=True
     ),
     AquareaEnergyConsumptionSensorDescription(
         key="energy_consumption",
