@@ -179,7 +179,7 @@ class DeviceManager:
             zones=[
                 DeviceZoneStatus(
                     zone_id=zone_status.get("zoneId"),
-                    temperature=zone_status.get("temparatureNow"),
+                    temperature=zone_status.get("temperatureNow"),
                     operation_status=OperationStatus(zone_status.get("operationStatus")),
                     heat_max=zone_status.get("heatMax"),
                     heat_min=zone_status.get("heatMin"),
