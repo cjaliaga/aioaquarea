@@ -57,9 +57,7 @@ class AquareaConsumptionManager:
             )
 
             consumption_data = await response.json()
-            _LOGGER.debug("Received consumption data: %s", consumption_data)
             if consumption_data and consumption_data.get("historyDataList"):
-                _LOGGER.debug("Processing historyDataList: %s", consumption_data["historyDataList"])
                 return [Consumption(item) for item in consumption_data["historyDataList"]]
             else:
                 _LOGGER.warning(

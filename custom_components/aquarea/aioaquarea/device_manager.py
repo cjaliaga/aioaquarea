@@ -70,14 +70,14 @@ class DeviceManager:
                         device_list = group.get('deviceIdList', [])
 
                     for device_raw in device_list:
-                        if device_raw:
+                        if device_raw and device_raw.get("deviceType") == '2':
                             _LOGGER.info(f"Raw device response: {device_raw}")
                             device_id = device_raw.get("deviceGuid")
                             device_name = device_raw.get("deviceName", "Unknown Device")
                             operation_mode = OperationMode(device_raw.get("operationMode", 0)) # Default to 0 if not found
                             has_tank = "tankStatus" in device_raw # Check for presence of tankStatus key
-                            firmware_version = "Unknown" # Mock data as it's not in the new structure
-                            model = device_raw.get("model", "Unknown Model") # Get model or use default
+                            firmware_version = "N/A" # Mock data as it's not in the new structure
+                            model = "N/A" # Get model or use default
 
                             zones: list[DeviceZoneInfo] = []
                             for zone_record in device_raw.get("zoneStatus", []):

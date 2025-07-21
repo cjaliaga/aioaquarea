@@ -158,7 +158,6 @@ class DeviceImpl(Device):
                                 # Ensure consistency with Home Assistant's date handling
                                 item_date = dt_util.as_local(dt.datetime.strptime(item_date_str, "%Y%m%d")).date()
                                 self._consumption[item_date] = item
-                                _LOGGER.debug("Stored consumption for date: %s, data: %s", item_date, item.raw_data) # Add debug log
                         except ValueError:
                             _LOGGER.warning("Could not parse date from consumption item: %s", item.data_time)
                     self._last_consumption_refresh = now
