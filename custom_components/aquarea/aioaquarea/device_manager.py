@@ -80,11 +80,16 @@ class DeviceManager:
                             model = "N/A" # Get model or use default
 
                             zones: list[DeviceZoneInfo] = []
+                            device_operation_mode = device_raw.get("operationMode")
+                            # Check if the device's overall operation mode indicates cooling support
+                            device_supports_cooling = device_operation_mode in [OperationMode.Cool.value, ExtendedOperationMode.COOL.value, ExtendedOperationMode.AUTO_COOL.value]
+
                             for zone_record in device_raw.get("zoneStatus", []):
                                 # Mock data for fields not present in the new zoneStatus structure
                                 zone_id = zone_record.get("zoneId")
                                 if zone_id is not None:
-                                    has_cool_mode = "coolMin" in zone_record and "coolMax" in zone_record
+                                    # Prioritize coolMin/coolMax if present, otherwise infer from device's overall cooling support
+                                    has_cool_mode = ("coolMin" in zone_record and "coolMax" in zone_record) or device_supports_cooling
                                     zone = DeviceZoneInfo(
                                         zone_id,
                                         f"Zone {zone_id}", # Mock zone name
