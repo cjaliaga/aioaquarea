@@ -254,39 +254,47 @@ class AquareaDeviceControl:
         )
 
     async def post_device_force_dhw(self, long_id: str, force_dhw: ForceDHW) -> None:
-        """Post quiet mode."""
-        data = {"status": [{"deviceGuid": long_id, "forceDHW": force_dhw.value}]}
+        """Post force DHW command."""
+        data = {
+            "apiName": "/remote/v1/api/devices",
+            "requestMethod": "POST",
+            "bodyParam": {
+                "gwid": long_id,
+                "forceDHW": force_dhw.value
+            }
+        }
 
         await self._api_client.request(
             "POST",
-            f"{AQUAREA_SERVICE_DEVICES}/{long_id}",
-            headers=PanasonicRequestHeader.get_aqua_headers(
-                content_type="application/json",
-                referer=f"{self._base_url}{AQUAREA_SERVICE_A2W_STATUS_DISPLAY}"
-            ),
+            "remote/v1/app/common/transfer",
             json=data,
+            throw_on_error=True,
         )
 
     async def post_device_force_heater(
         self, long_id: str, force_heater: ForceHeater
     ) -> None:
-        """Post quiet mode."""
-        data = {"status": [{"deviceGuid": long_id, "forceHeater": force_heater.value}]}
+        """Post force heater command."""
+        data = {
+            "apiName": "/remote/v1/api/devices",
+            "requestMethod": "POST",
+            "bodyParam": {
+                "gwid": long_id,
+                "forceHeater": force_heater.value
+            }
+        }
 
         await self._api_client.request(
             "POST",
-            f"{AQUAREA_SERVICE_DEVICES}/{long_id}",
-            headers=PanasonicRequestHeader.get_aqua_headers(
-                content_type="application/json",
-                referer=f"{self._base_url}{AQUAREA_SERVICE_A2W_STATUS_DISPLAY}"
-            ),
+            "remote/v1/app/common/transfer",
             json=data,
+            throw_on_error=True,
         )
 
     async def post_device_holiday_timer(
         self, long_id: str, holiday_timer: HolidayTimer
     ) -> None:
-        """Post quiet mode."""
+        """Post holidayTimer mode."""
         data = {
             "status": [{"deviceGuid": long_id, "holidayTimer": holiday_timer.value}]
         }
@@ -302,7 +310,7 @@ class AquareaDeviceControl:
         )
 
     async def post_device_request_defrost(self, long_id: str) -> None:
-        """Post quiet mode."""
+        """Post forcedefrost mode."""
         data = {"status": [{"deviceGuid": long_id, "forcedefrost": 1}]}
 
         await self._api_client.request(
