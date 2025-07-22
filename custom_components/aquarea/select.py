@@ -48,6 +48,7 @@ class AquareaQuietModeSelect(AquareaBaseEntity, SelectEntity):
         """Initialize the sensor."""
         super().__init__(coordinator)
         self._attr_unique_id = f"{super().unique_id}_quiet_mode"
+        self._attr_name = "Quiet Mode"
         self._attr_translation_key = "quiet_mode"
         self._attr_options = list(QUIET_MODE_LOOKUP.keys())
         self._attr_icon = "mdi:volume-off"
@@ -77,6 +78,7 @@ class AquareaPowerfulTimeSelect(AquareaBaseEntity, SelectEntity):
         """Initialize the sensor."""
         super().__init__(coordinator)
         self._attr_unique_id = f"{super().unique_id}_powerful_time"
+        self._attr_name = "Powerful Time"
         self._attr_translation_key = "powerful_time"
         self._attr_options = list(POWERFUL_TIME_LOOKUP.keys())
 

@@ -31,6 +31,7 @@ class AquareaDefrostButton(AquareaBaseEntity, ButtonEntity):
         """Initialize the sensor."""
         super().__init__(coordinator)
         self._attr_unique_id = f"{super().unique_id}_request_defrost"
+        self._attr_name = "Request Defrost"
         self._attr_translation_key = "request_defrost"
         self._attr_icon = "mdi:snowflake-melt"
 

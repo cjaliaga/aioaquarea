@@ -40,6 +40,7 @@ class AquareaForceDHWSwitch(AquareaBaseEntity, SwitchEntity):
     def __init__(self, coordinator: AquareaDataUpdateCoordinator) -> None:
         """Initialize the switch."""
         super().__init__(coordinator)
+        self._attr_name = "Force DHW"
         self._attr_translation_key = "force_dhw"
         self._attr_unique_id = f"{super().unique_id}_force_dhw"
 
@@ -67,6 +68,7 @@ class AquareaForceHeaterSwitch(AquareaBaseEntity, SwitchEntity):
     def __init__(self, coordinator: AquareaDataUpdateCoordinator) -> None:
         """Initialize the switch."""
         super().__init__(coordinator)
+        self._attr_name = "Force Heating"
         self._attr_translation_key = "force_heater"
         self._attr_unique_id = f"{super().unique_id}_force_heater"
 
@@ -94,6 +96,7 @@ class AquareaHolidayTimerSwitch(AquareaBaseEntity, SwitchEntity):
     def __init__(self, coordinator: AquareaDataUpdateCoordinator) -> None:
         """Initialize the switch."""
         super().__init__(coordinator)
+        self._attr_name = "Holiday Timer"
         self._attr_translation_key = "holiday_timer"
         self._attr_unique_id = f"{super().unique_id}_holiday_timer"
 

@@ -36,6 +36,7 @@ class AquareaStatusBinarySensor(AquareaBaseEntity, BinarySensorEntity):
         """Initialize the sensor."""
         super().__init__(coordinator)
         self._attr_unique_id = f"{super().unique_id}_status"
+        self._attr_name = "Status"
         self._attr_translation_key = "status"
         self._attr_device_class = BinarySensorDeviceClass.PROBLEM
         self._attr_entity_category = EntityCategory.DIAGNOSTIC
@@ -51,6 +52,7 @@ class AquareaDefrostBinarySensor(AquareaBaseEntity, BinarySensorEntity):
         """Initialize the sensor."""
         super().__init__(coordinator)
         self._attr_unique_id = f"{super().unique_id}_defrost"
+        self._attr_name = "Defrost"
         self._attr_translation_key = "defrost"
         self._attr_device_class = BinarySensorDeviceClass.RUNNING
 
