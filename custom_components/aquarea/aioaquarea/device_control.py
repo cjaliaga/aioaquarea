@@ -294,33 +294,39 @@ class AquareaDeviceControl:
     async def post_device_holiday_timer(
         self, long_id: str, holiday_timer: HolidayTimer
     ) -> None:
-        """Post holidayTimer mode."""
+        """Post holidayTimer command."""
         data = {
-            "status": [{"deviceGuid": long_id, "holidayTimer": holiday_timer.value}]
+            "apiName": "/remote/v1/api/devices",
+            "requestMethod": "POST",
+            "bodyParam": {
+                "gwid": long_id,
+                "holidayTimer": holiday_timer.value
+            }
         }
 
         await self._api_client.request(
             "POST",
-            f"{AQUAREA_SERVICE_DEVICES}/{long_id}",
-            headers=PanasonicRequestHeader.get_aqua_headers(
-                content_type="application/json",
-                referer=f"{self._base_url}{AQUAREA_SERVICE_A2W_STATUS_DISPLAY}"
-            ),
+            "remote/v1/app/common/transfer",
             json=data,
+            throw_on_error=True,
         )
 
     async def post_device_request_defrost(self, long_id: str) -> None:
-        """Post forcedefrost mode."""
-        data = {"status": [{"deviceGuid": long_id, "forcedefrost": 1}]}
+        """Post forcedefrost command."""
+        data = {
+            "apiName": "/remote/v1/api/devices",
+            "requestMethod": "POST",
+            "bodyParam": {
+                "gwid": long_id,
+                "forcedefrost": 1
+            }
+        }
 
         await self._api_client.request(
             "POST",
-            f"{AQUAREA_SERVICE_DEVICES}/{long_id}",
-            headers=PanasonicRequestHeader.get_aqua_headers(
-                content_type="application/json",
-                referer=f"{self._base_url}{AQUAREA_SERVICE_A2W_STATUS_DISPLAY}"
-            ),
+            "remote/v1/app/common/transfer",
             json=data,
+            throw_on_error=True,
         )
 
     async def post_device_set_powerful_time(

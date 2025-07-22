@@ -22,7 +22,6 @@ logging.getLogger("custom_components.aquarea.aioaquarea").setLevel(logging.DEBUG
 PLATFORMS: list[Platform] = [
     Platform.CLIMATE,
     Platform.SENSOR,
-    Platform.SWITCH,
     Platform.WATER_HEATER,
     Platform.BINARY_SENSOR,
     Platform.BUTTON,
