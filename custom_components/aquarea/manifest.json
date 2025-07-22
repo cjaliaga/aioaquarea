@@ -15,7 +15,7 @@
     "requirements": [
         "aiohttp<4.0"
     ],
-    "version": "1.0.18",
+    "version": "1.0.19",
     "ssdp": [],
     "zeroconf": []
 }

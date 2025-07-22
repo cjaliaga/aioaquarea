@@ -36,7 +36,6 @@ class AquareaEnergyConsumptionSensorDescription(SensorEntityDescription):
 ACCUMULATED_ENERGY_SENSORS: list[AquareaEnergyConsumptionSensorDescription] = [
     AquareaEnergyConsumptionSensorDescription(
         key="heating_accumulated_energy_consumption",
-        translation_key="heating_monthly_accumulated_energy_consumption",
         name="Heating Monthly Accumulated Consumption",
         device_class=SensorDeviceClass.ENERGY,
         state_class=SensorStateClass.TOTAL_INCREASING,
@@ -46,7 +45,6 @@ ACCUMULATED_ENERGY_SENSORS: list[AquareaEnergyConsumptionSensorDescription] = [
     ),
     AquareaEnergyConsumptionSensorDescription(
         key="cooling_accumulated_energy_consumption",
-        translation_key="cooling_monthly_accumulated_energy_consumption",
         name= "Cooling Monthly Accumulated Consumption",
         device_class=SensorDeviceClass.ENERGY,
         state_class=SensorStateClass.TOTAL_INCREASING,
@@ -57,7 +55,6 @@ ACCUMULATED_ENERGY_SENSORS: list[AquareaEnergyConsumptionSensorDescription] = [
     ),
     AquareaEnergyConsumptionSensorDescription(
         key="tank_accumulated_energy_consumption",
-        translation_key = "tank_monthly_accumulated_energy_consumption",
         name= "Tank Monthly Accumulated Consumption",
         device_class=SensorDeviceClass.ENERGY,
         state_class=SensorStateClass.TOTAL_INCREASING,
@@ -68,7 +65,6 @@ ACCUMULATED_ENERGY_SENSORS: list[AquareaEnergyConsumptionSensorDescription] = [
     ),
     AquareaEnergyConsumptionSensorDescription(
         key="accumulated_energy_consumption",
-        translation_key="monthly_accumulated_energy_consumption",
         name= "Monthly Accumulated Consumption",
         device_class=SensorDeviceClass.ENERGY,
         state_class=SensorStateClass.TOTAL_INCREASING,
@@ -80,8 +76,7 @@ ACCUMULATED_ENERGY_SENSORS: list[AquareaEnergyConsumptionSensorDescription] = [
 ENERGY_SENSORS: list[AquareaEnergyConsumptionSensorDescription] = [
     AquareaEnergyConsumptionSensorDescription(
         key="heating_energy_consumption",
-        translation_key="heating_monthly_energy_consumption",
-        name="Heating Monthly Consumption",
+        name="Heating Today's Consumption",
         device_class=SensorDeviceClass.ENERGY,
         state_class=SensorStateClass.TOTAL_INCREASING,
         native_unit_of_measurement=UnitOfEnergy.KILO_WATT_HOUR,
@@ -91,8 +86,7 @@ ENERGY_SENSORS: list[AquareaEnergyConsumptionSensorDescription] = [
     ),
     AquareaEnergyConsumptionSensorDescription(
         key="tank_energy_consumption",
-        translation_key="tank_monthly_energy_consumption",
-        name= "Tank Monthly Consumption",
+        name= "Tank Today's Consumption",
         device_class=SensorDeviceClass.ENERGY,
         state_class=SensorStateClass.TOTAL_INCREASING,
         native_unit_of_measurement=UnitOfEnergy.KILO_WATT_HOUR,
@@ -103,8 +97,7 @@ ENERGY_SENSORS: list[AquareaEnergyConsumptionSensorDescription] = [
     ),
     AquareaEnergyConsumptionSensorDescription(
         key="cooling_energy_consumption",
-        translation_key="cooling_monthly_energy_consumption",
-        name= "Cooling Monthly Consumption",
+        name= "Cooling Today's Consumption",
         device_class=SensorDeviceClass.ENERGY,
         state_class=SensorStateClass.TOTAL_INCREASING,
         native_unit_of_measurement=UnitOfEnergy.KILO_WATT_HOUR,
@@ -115,8 +108,7 @@ ENERGY_SENSORS: list[AquareaEnergyConsumptionSensorDescription] = [
     ),
     AquareaEnergyConsumptionSensorDescription(
         key="energy_consumption",
-        translation_key="monthly_energy_consumption",
-        name= "Monthly Consumption",
+        name= "Today's Consumption",
         device_class=SensorDeviceClass.ENERGY,
         state_class=SensorStateClass.TOTAL_INCREASING,
         native_unit_of_measurement=UnitOfEnergy.KILO_WATT_HOUR,
@@ -218,7 +210,7 @@ class OutdoorTemperatureSensor(AquareaBaseEntity, SensorEntity):
     def __init__(self, coordinator: AquareaDataUpdateCoordinator) -> None:
         """Initialize outdoor temperature sensor."""
         super().__init__(coordinator)
-        self._attr_translation_key = "outdoor_temperature"
+        self._attr_name = "Outdoor Temperature"
         self._attr_unique_id = f"{super().unique_id}_outdoor_temperature"
         self._attr_device_class = SensorDeviceClass.TEMPERATURE
         self._attr_state_class = SensorStateClass.MEASUREMENT
