@@ -17,32 +17,19 @@ import aiohttp
 from bs4 import BeautifulSoup
 
 from .const import (
-    AQUAREA_SERVICE_A2W_STATUS_DISPLAY,
-    AQUAREA_SERVICE_AUTH0_CLIENT,
-    AQUAREA_SERVICE_BASE,
-    AQUAREA_SERVICE_CONSUMPTION,
-    AQUAREA_SERVICE_CONTRACT,
-    AQUAREA_SERVICE_DEMO_BASE,
-    AQUAREA_SERVICE_DEVICES,
-    AQUAREA_SERVICE_LOGIN,
-    AQUAREA_SERVICE_AUTH_CLIENT_ID,
     AquareaEnvironment,
     REDIRECT_URI,
-    AQUAREA_SERVICE_TOKEN,
-    AQUAREA_SERVICE_ACC_LOGIN,
     APP_CLIENT_ID,
     AUTH_0_CLIENT,
     BASE_PATH_ACC,
     BASE_PATH_AUTH,
     AUTH_API_USER_AGENT,
     AUTH_BROWSER_USER_AGENT,
+    DEFAULT_X_APP_VERSION
 )
 from .errors import (
-    ApiError,
     AuthenticationError,
     AuthenticationErrorCodes,
-    DataNotAvailableError,
-    InvalidData,
 )
 
 _LOGGER = logging.getLogger(__name__)
@@ -65,7 +52,7 @@ class PanasonicSettings:
 
 class CCAppVersion:
     def __init__(self):
-        self.version = "2.1.1" # Default version
+        self.version = DEFAULT_X_APP_VERSION # Default version
     async def refresh(self):
         # In a real scenario, this would fetch the latest app version
         pass
