@@ -52,7 +52,7 @@ class WaterHeater(AquareaBaseEntity, WaterHeaterEntity):
             WaterHeaterEntityFeature.TARGET_TEMPERATURE
             | WaterHeaterEntityFeature.OPERATION_MODE
         )
-        self._attr_operation_list = [HEATING, STATE_OFF]
+        self._attr_operation_list = [HEATING, IDLE, STATE_OFF] # Added IDLE
         self._attr_precision = PRECISION_WHOLE
         self._attr_target_temperature_step = 1
         self._attr_available = self.coordinator.device.tank is not None # Set initial availability
@@ -101,11 +101,11 @@ class WaterHeater(AquareaBaseEntity, WaterHeaterEntity):
             self._attr_icon = "mdi:water-boiler"
             direction = self.coordinator.device.current_direction
             if direction == DeviceDirection.WATER:
-                self._attr_state = STATE_HEAT_PUMP
+                self._attr_state = HEATING # Changed from STATE_HEAT_PUMP
                 self._attr_current_operation = HEATING
             else:
                 self._attr_state = 'Idle (heating)'
-                self._attr_current_operation = HEATING
+                self._attr_current_operation = IDLE # Changed from HEATING
 
     def _update_temperature(self) -> None:
         if not self.coordinator.device.tank: # Check if tank exists
