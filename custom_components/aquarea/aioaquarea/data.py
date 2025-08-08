@@ -167,6 +167,11 @@ class DeviceDirection(IntEnum):
     PUMP = 1
     WATER = 2
 
+class PumpDuty(IntEnum):
+    """Device direction"""
+
+    OFF = 0
+    ON = 1
 
 class QuietMode(IntEnum):
     """Quiet mode level"""
@@ -305,7 +310,7 @@ class DeviceStatus:
     temperature_outdoor: int
     operation_mode: ExtendedOperationMode
     fault_status: list[FaultError]
-    direction: int
+    direction: DeviceDirection
     pump_duty: int
     tank_status: list[TankStatus]
     zones: list[DeviceZoneStatus]

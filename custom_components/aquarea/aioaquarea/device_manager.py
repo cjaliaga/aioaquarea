@@ -18,6 +18,7 @@ from .data import (
     ExtendedOperationMode,
     FaultError,
     PowerfulTime,
+    PumpDuty,
     QuietMode,
     SensorMode,
     StatusDataMode,
@@ -72,8 +73,49 @@ class DeviceManager:
 
                     for device_raw in device_list:
                         if device_raw and device_raw.get("deviceType") == '2':
+                            _LOGGER.info(f"Raw device response: {device_raw}")
                             device_id = device_raw.get("deviceGuid")
-                            device_info = await self.get_device_status(DeviceInfo(device_id, "", "", OperationMode.Auto, False, "", "", [], StatusDataMode.LIVE))
+                            device_name = device_raw.get("deviceName", "Unknown Device")
+                            operation_mode = OperationMode(device_raw.get("operationMode", 0)) # Default to 0 if not found
+                            has_tank = "tankStatus" in device_raw # Check for presence of tankStatus key
+                            firmware_version = "N/A" # Mock data as it's not in the new structure
+                            model = "N/A" # Get model or use default
+
+                            zones: list[DeviceZoneInfo] = []
+                            device_operation_mode = device_raw.get("operationMode")
+                            # Check if the device's overall operation mode indicates cooling support
+                            device_supports_cooling = device_operation_mode in [OperationMode.Cool.value, ExtendedOperationMode.COOL.value, ExtendedOperationMode.AUTO_COOL.value]
+
+                            for zone_record in device_raw.get("zoneStatus", []):
+                                # Mock data for fields not present in the new zoneStatus structure
+                                zone_id = zone_record.get("zoneId")
+                                if zone_id is not None:
+                                    # Prioritize coolMin/coolMax if present, otherwise infer from device's overall cooling support
+                                    has_cool_mode = ("coolMin" in zone_record and "coolMax" in zone_record) or device_supports_cooling
+                                    zone = DeviceZoneInfo(
+                                        zone_id,
+                                        f"Zone {zone_id}", # Mock zone name
+                                        "Unknown", # Mock zone type
+                                        has_cool_mode, # Determine cool_mode based on coolMin/coolMax presence
+                                        SensorMode.DIRECT, # Mock heat_sensor
+                                        SensorMode.DIRECT, # Mock cool_sensor
+                                        SensorMode.DIRECT, # Mock cool_sensor
+                                    )
+                                    zones.append(zone)
+
+                            device_info = DeviceInfo(
+                                device_id,
+                                device_name,
+                                device_id, # long_id
+                                operation_mode,
+                                has_tank,
+                                firmware_version,
+                                model, # Added model
+                                zones,
+                                StatusDataMode.LIVE # Added status_data_mode
+                            )
+                            _LOGGER.info(f"get_devices: Device {device_id} has_tank: {has_tank}, raw device_raw: {device_raw}")
+                            self._device_indexer[device_id] = device_id
                             self._devices.append(device_info)
         return self._devices + self._unknown_devices
 
@@ -131,8 +173,8 @@ class DeviceManager:
                 FaultError(fault_status["errorMessage"], fault_status["errorCode"])
                 for fault_status in device.get("faultStatus", [])
             ],
-            direction=DeviceDirection(device.get("direction", 0)),
-            pump_duty=device.get("pumpDuty"),
+            direction=DeviceDirection(device.get("direction")),
+            pump_duty=PumpDuty(device.get("pumpDuty")),
             tank_status=[
                 TankStatus(
                     OperationStatus(device.get("tankStatus", {}).get("operationStatus")),

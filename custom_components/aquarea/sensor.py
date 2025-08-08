@@ -4,7 +4,7 @@ from dataclasses import dataclass
 from datetime import datetime, timedelta
 import logging
 from typing import Any, Self
-from .aioaquarea import ConsumptionType, DataNotAvailableError
+from .aioaquarea import ConsumptionType, DataNotAvailableError, DeviceDirection
 from homeassistant.components.sensor import (
     SensorDeviceClass,
     SensorEntity,
@@ -145,6 +145,8 @@ async def async_setup_entry(
                 if description.exists_fn(coordinator)
             ]
         )
+        entities.append(AquareaDirectionSensor(coordinator))
+        entities.append(AquareaPumpDutySensor(coordinator))
     async_add_entities(entities)
 
 
@@ -390,4 +392,54 @@ class EnergyConsumptionSensor(AquareaBaseEntity, SensorEntity, RestoreEntity):
             _LOGGER.error("Error updating sensor %s: %s", self.unique_id, ex)
             self._attr_native_value = 0.0 # Set to 0 on error
 
+        super()._handle_coordinator_update()
+
+
+class AquareaDirectionSensor(AquareaBaseEntity, SensorEntity):
+    """Representation of a Aquarea sensor for device direction."""
+
+    def __init__(self, coordinator: AquareaDataUpdateCoordinator) -> None:
+        """Initialize the direction sensor."""
+        super().__init__(coordinator)
+        self._attr_name = "Direction"
+        self._attr_unique_id = f"{super().unique_id}_direction"
+        self._attr_icon = "mdi:compass"
+
+    @callback
+    def _handle_coordinator_update(self) -> None:
+        """Handle updated data from the coordinator."""
+        _LOGGER.debug(
+            "Updating sensor '%s' of %s",
+            "direction",
+            self.coordinator.device.device_name,
+        )
+        self._attr_native_value = self.coordinator.device.current_direction.name
+        super()._handle_coordinator_update()
+
+
+class AquareaPumpDutySensor(AquareaBaseEntity, SensorEntity):
+    """Representation of a Aquarea sensor for pump duty."""
+
+    def __init__(self, coordinator: AquareaDataUpdateCoordinator) -> None:
+        """Initialize the pump duty sensor."""
+        super().__init__(coordinator)
+        self._attr_name = "Pump Status"
+        self._attr_unique_id = f"{super().unique_id}_pump_status"
+        self._attr_state_class = SensorStateClass.MEASUREMENT # Keep as measurement for 0/1
+        # No native_unit_of_measurement as it's a binary state (0 or 1)
+
+    @property
+    def icon(self) -> str:
+        """Return the icon."""
+        return "mdi:pump-off" if self.coordinator.device.pump_duty == 0 else "mdi:pump"
+
+    @callback
+    def _handle_coordinator_update(self) -> None:
+        """Handle updated data from the coordinator."""
+        _LOGGER.debug(
+            "Updating sensor '%s' of %s",
+            "pump_status",
+            self.coordinator.device.device_name,
+        )
+        self._attr_native_value = self.coordinator.device.pump_duty
         super()._handle_coordinator_update()
