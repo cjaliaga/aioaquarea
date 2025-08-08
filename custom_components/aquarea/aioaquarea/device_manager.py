@@ -73,7 +73,7 @@ class DeviceManager:
                     for device_raw in device_list:
                         if device_raw and device_raw.get("deviceType") == '2':
                             device_id = device_raw.get("deviceGuid")
-                            device_info = await self.get_device_status(DeviceInfo(device_id, "", "", OperationMode.OFF, False, "", "", [], StatusDataMode.LIVE))
+                            device_info = await self.get_device_status(DeviceInfo(device_id, "", "", OperationMode.Auto, False, "", "", [], StatusDataMode.LIVE))
                             self._devices.append(device_info)
         return self._devices + self._unknown_devices
 
