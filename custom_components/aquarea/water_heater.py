@@ -1,7 +1,7 @@
 """Defines the water heater entity to control the Aquarea water tank."""
 from __future__ import annotations
 import logging
-from .aioaquarea.data import DeviceAction, OperationStatus
+from .aioaquarea.data import DeviceAction, DeviceDirection, OperationStatus
 from homeassistant.components.water_heater import (
     STATE_HEAT_PUMP,
     WaterHeaterEntity,
@@ -99,11 +99,12 @@ class WaterHeater(AquareaBaseEntity, WaterHeaterEntity):
             )
         else:
             self._attr_icon = "mdi:water-boiler"
-            if self.is_actively_heating:
+            direction = self.coordinator.device.current_direction
+            if direction == DeviceDirection.WATER:
                 self._attr_state = STATE_HEAT_PUMP
                 self._attr_current_operation = HEATING
             else:
-                self._attr_state = "Idle (heating)"
+                self._attr_state = 'Idle (heating)'
                 self._attr_current_operation = HEATING
 
     def _update_temperature(self) -> None:
