@@ -76,10 +76,12 @@ def get_hvac_mode_from_ext_op_mode(
 
 def get_hvac_action_from_ext_action(action: DeviceAction) -> HVACAction:
     """Convert device action to HVAC action."""
-    if action == DeviceAction.COOLING:
-        return HVACAction.COOLING
     if action == DeviceAction.HEATING:
         return HVACAction.HEATING
+    if action == DeviceAction.COOLING:
+        return HVACAction.COOLING
+    if action == DeviceAction.IDLE:
+        return HVACAction.IDLE
     return HVACAction.IDLE
 
 
