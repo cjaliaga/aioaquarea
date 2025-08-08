@@ -168,7 +168,7 @@ class DeviceDirection(IntEnum):
     WATER = 2
 
 class PumpDuty(IntEnum):
-    """Device direction"""
+    """Pump duty"""
 
     OFF = 0
     ON = 1
@@ -311,7 +311,7 @@ class DeviceStatus:
     operation_mode: ExtendedOperationMode
     fault_status: list[FaultError]
     direction: DeviceDirection
-    pump_duty: int
+    pump_duty: PumpDuty
     tank_status: list[TankStatus]
     zones: list[DeviceZoneStatus]
     quiet_mode: QuietMode
