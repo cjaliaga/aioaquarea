@@ -11,6 +11,7 @@ from .aioaquarea import (
     OperationStatus,
     SpecialStatus,
     UpdateOperationMode,
+    DeviceDirection,
 )
 from homeassistant.components.climate import (
     ATTR_HVAC_MODE,
@@ -85,6 +86,18 @@ def get_hvac_action_from_ext_action(action: DeviceAction) -> HVACAction:
     return HVACAction.IDLE
 
 
+def get_hvac_action_from_device_direction(
+    direction: DeviceDirection, hvac_mode: HVACMode
+) -> HVACAction:
+    """Convert device direction to HVAC action."""
+    if direction == DeviceDirection.PUMP:
+        if hvac_mode == HVACMode.HEAT:
+            return HVACAction.HEATING
+        if hvac_mode == HVACMode.COOL:
+            return HVACAction.COOLING
+    return HVACAction.IDLE
+
+
 def get_update_operation_mode_from_hvac_mode(mode: HVACMode) -> UpdateOperationMode:
     """Convert HVAC mode to update operation mode."""
     if mode == HVACMode.HEAT:
@@ -127,7 +140,9 @@ class HeatPumpClimate(AquareaBaseEntity, ClimateEntity):
         self._attr_hvac_mode = get_hvac_mode_from_ext_op_mode(
             device.mode, zone.operation_status
         )
-        self._attr_hvac_action = get_hvac_action_from_ext_action(device.current_action)
+        self._attr_hvac_action = get_hvac_action_from_device_direction(
+            device.current_direction, self._attr_hvac_mode
+        )
         self._attr_icon = (
             "mdi:hvac-off" if device.mode == ExtendedOperationMode.OFF else "mdi:hvac"
         )
