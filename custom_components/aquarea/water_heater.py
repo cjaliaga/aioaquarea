@@ -58,6 +58,11 @@ class WaterHeater(AquareaBaseEntity, WaterHeaterEntity):
         self._attr_available = self.coordinator.device.tank is not None # Set initial availability
         self._update_temperature()
         self._update_operation_state()
+        
+    @property
+    def is_actively_heating(self) -> bool:
+        """Determine if the water heater is actively heating."""
+        return self.coordinator.device.current_action == DeviceAction.HEATING_WATER
 
     @property
     def available(self) -> bool:
@@ -94,10 +99,12 @@ class WaterHeater(AquareaBaseEntity, WaterHeaterEntity):
             )
         else:
             self._attr_icon = "mdi:water-boiler"
-            self._attr_state = STATE_HEAT_PUMP
-            # If the tank is on, its current operation should be HEATING
-            # regardless of whether it's actively heating water or just idle.
-            self._attr_current_operation = HEATING
+            if self.is_actively_heating:
+                self._attr_state = STATE_HEAT_PUMP
+                self._attr_current_operation = HEATING
+            else:
+                self._attr_state = "Idle (heating)"
+                self._attr_current_operation = HEATING
 
     def _update_temperature(self) -> None:
         if not self.coordinator.device.tank: # Check if tank exists
@@ -135,5 +142,7 @@ class WaterHeater(AquareaBaseEntity, WaterHeaterEntity):
 
         if operation_mode == HEATING:
             await self.coordinator.device.tank.turn_on()
+        elif operation_mode == IDLE:
+            await self.coordinator.device.tank.set_idle()
         elif operation_mode == STATE_OFF:
             await self.coordinator.device.tank.turn_off()
