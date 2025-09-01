@@ -1,0 +1,21 @@
+{
+    "domain": "aquarea",
+    "name": "Panasonic Aquarea",
+    "codeowners": [
+        "@wpatrik14"
+    ],
+    "config_flow": true,
+    "dependencies": [
+        "recorder"
+    ],
+    "documentation": "https://github.com/wpatrik14/aioaquarea",
+    "integration_type": "device",
+    "iot_class": "cloud_polling",
+    "issue_tracker": "https://github.com/wpatrik14/aioaquarea/issues",
+    "requirements": [
+        "aiohttp<4.0"
+    ],
+    "version": "1.0.27",
+    "ssdp": [],
+    "zeroconf": []
+}
