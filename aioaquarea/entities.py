@@ -25,7 +25,7 @@ from .data import (
     ZoneTemperatureSetUpdate,
 )
 from .errors import DataNotAvailableError
-from .statistics import ConsumptionType, DateType
+from .statistics import Consumption, ConsumptionType, DateType
 
 if TYPE_CHECKING:
     from .core import AquareaClient
@@ -221,17 +221,26 @@ class DeviceImpl(Device):
     async def set_temperature(
         self, temperature: int, zone_id: int | None = None
     ) -> None:
-        if not self.zones.get(zone_id).supports_set_temperature:
-            print("Zone does not support setting temperature.")
+        if not zone_id:
+            _LOGGER.warning("No zone id provided to set_temperature")
+            return
+         
+        zone = self.zones.get(zone_id)
+        if not zone:
+            _LOGGER.warning("Zone does not exist.")
+            return
+            
+        if not zone.supports_set_temperature:
+            _LOGGER.warning("Zone does not support setting temperature.")
             return
 
         if self.mode in [ExtendedOperationMode.AUTO_COOL, ExtendedOperationMode.COOL]:
-            print(f"Setting cool temperature for zone {zone_id} to {temperature}")
+            _LOGGER.info(f"Setting cool temperature for zone {zone_id} to {temperature}")
             await self._client.post_device_zone_cool_temperature(
                 self.long_id, zone_id, temperature
             )
         elif self.mode in [ExtendedOperationMode.AUTO_HEAT, ExtendedOperationMode.HEAT]:
-            print(f"Setting heat temperature for zone {zone_id} to {temperature}")
+            _LOGGER.info(f"Setting heat temperature for zone {zone_id} to {temperature}")
             await self._client.post_device_zone_heat_temperature(
                 self.long_id, zone_id, temperature
             )

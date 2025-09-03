@@ -4,7 +4,7 @@ from __future__ import annotations
 import asyncio
 import datetime as dt
 import logging
-from typing import Optional
+from typing import List, Optional
 
 import aiohttp
 
@@ -312,7 +312,7 @@ class AquareaClient: # Renamed Client to AquareaClient
 
     async def get_device_consumption(
         self, long_id: str, aggregation: DateType, date_input: str
-    ) -> Consumption:
+    ) -> List[Consumption] | None:
         """Get device consumption."""
         return await self._consumption_manager.get_device_consumption(long_id, aggregation, date_input)
 

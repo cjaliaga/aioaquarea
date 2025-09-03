@@ -716,7 +716,7 @@ class Device(ABC):
         await self.__set_special_status__(special_status, zones)
 
     @abstractmethod
-    async def __set_special_status__(special_status: SpecialStatus | None, zones: list[ZoneTemperatureSetUpdate]) -> None:
+    async def __set_special_status__(self, special_status: SpecialStatus | None, zones: list[ZoneTemperatureSetUpdate]) -> None:
         """Set the special status.
         :param special_status: Special status to set
         :param zones: Zones to set the special status for
