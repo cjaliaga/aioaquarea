@@ -24,7 +24,8 @@ classifiers = [
 ]
 dependencies = [
   "aiohttp",
-  'StrEnum; python_version < "3.11"'
+  'StrEnum; python_version < "3.11"',
+  "bs4"
 ]
 
 [project.urls]

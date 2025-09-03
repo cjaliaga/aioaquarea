@@ -1,5 +1,6 @@
 from collections import OrderedDict
 
+
 def limit_range(value, min_value, max_value):
         if value < min_value:
             return min_value

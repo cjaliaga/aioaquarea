@@ -3,23 +3,26 @@ from __future__ import annotations
 
 from typing import Tuple
 
-from .core import Client
+from .const import AquareaEnvironment
+from .core import AquareaClient as Client  # Import AquareaClient and alias it as Client
 from .data import (
     Device,
     DeviceAction,
+    DeviceDirection,
     DeviceInfo,
-    DeviceStatus,
     DeviceModeStatus,
+    DeviceStatus,
     ExtendedOperationMode,
-    OperationStatus,
-    QuietMode,
     ForceDHW,
     ForceHeater,
+    HolidayTimer,
+    OperationStatus,
+    PowerfulTime,
+    PumpDuty,
+    QuietMode,
+    SpecialStatus,
     Tank,
     UpdateOperationMode,
-    HolidayTimer,
-    PowerfulTime,
-    SpecialStatus
 )
 from .errors import (
     ApiError,
@@ -31,10 +34,8 @@ from .errors import (
 )
 from .statistics import Consumption, ConsumptionType, DateType
 
-from .const import AquareaEnvironment
-
 __all__: Tuple[str, ...] = (
-    "Client",
+    "Client", # Keep "Client" in __all__ as it's aliased
     "Device",
     "ClientError",
     "RequestFailedError",
@@ -55,6 +56,8 @@ __all__: Tuple[str, ...] = (
     "ConsumptionType",
     "DataNotAvailableError",
     "DeviceModeStatus",
+    "DeviceDirection",
+    "PumpDuty",
     "ForceHeater",
     "HolidayTimer",
     "PowerfulTime",
