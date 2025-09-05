@@ -1,4 +1,5 @@
 """Statistics models for Aquarea"""
+
 from __future__ import annotations
 
 try:

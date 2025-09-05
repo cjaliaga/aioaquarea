@@ -4,8 +4,6 @@ import datetime as dt
 import logging
 from typing import TYPE_CHECKING
 
-from .auth import PanasonicRequestHeader
-from .const import AQUAREA_SERVICE_A2W_STATUS_DISPLAY, AQUAREA_SERVICE_CONSUMPTION
 from .errors import ApiError, AuthenticationError
 from .statistics import Consumption, DateType
 
@@ -14,10 +12,13 @@ if TYPE_CHECKING:
 
 _LOGGER = logging.getLogger(__name__)
 
+
 class AquareaConsumptionManager:
     """Handles consumption data retrieval."""
 
-    def __init__(self, api_client: AquareaAPIClient, base_url: str, timezone: dt.timezone):
+    def __init__(
+        self, api_client: AquareaAPIClient, base_url: str, timezone: dt.timezone
+    ):
         self._api_client = api_client
         self._base_url = base_url
         self._timezone = timezone
@@ -44,7 +45,9 @@ class AquareaConsumptionManager:
                 "requestMethod": "POST",
                 "bodyParam": {
                     "gwid": long_id,
-                    "dataMode": data_mode_map.get(aggregation, 0), # Default to 0 (DAY) if not found
+                    "dataMode": data_mode_map.get(
+                        aggregation, 0
+                    ),  # Default to 0 (DAY) if not found
                     "date": date_input,
                     "osTimezone": timezone_str,
                 },
@@ -58,7 +61,9 @@ class AquareaConsumptionManager:
 
             consumption_data = await response.json()
             if consumption_data and consumption_data.get("historyDataList"):
-                return [Consumption(item) for item in consumption_data["historyDataList"]]
+                return [
+                    Consumption(item) for item in consumption_data["historyDataList"]
+                ]
             else:
                 _LOGGER.warning(
                     "No consumption data found for device %s, date %s, aggregation %s. Full response: %s",
@@ -79,9 +84,10 @@ class AquareaConsumptionManager:
             return None
         except Exception as ex:
             _LOGGER.exception(
-                "An unexpected error occurred while getting consumption data for device %s, date %s, aggregation %s",
+                "An unexpected error occurred while getting consumption data for device %s, date %s, aggregation %s: %s",
                 long_id,
                 date_input,
                 aggregation,
+                ex,
             )
             return None

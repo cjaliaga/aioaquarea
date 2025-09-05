@@ -32,20 +32,22 @@ if TYPE_CHECKING:
 
 _LOGGER = logging.getLogger(__name__)
 
+
 class TankImpl(Tank):
     """Tank implementation."""
 
     _client: "AquareaClient"
 
-    def __init__(self, status: TankStatus, device: Device, client: "AquareaClient") -> None:
+    def __init__(
+        self, status: TankStatus, device: Device, client: "AquareaClient"
+    ) -> None:
         super().__init__(status, device)
         self._client = client
 
     async def __set_target_temperature__(self, value: int) -> None:
         await self._client.post_device_tank_temperature(self._device.device_id, value)
 
-    async def __set_operation_status__(
-        self, status: OperationStatus) -> None:
+    async def __set_operation_status__(self, status: OperationStatus) -> None:
         # Get current zone statuses from the device
         zones_status = list(self._device.zones.values())
         await self._client.post_device_tank_operation_status(
@@ -80,7 +82,7 @@ class DeviceImpl(Device):
             firmware_version=firmware_version,
             model=model,
             zones=zones_info,
-            status_data_mode=StatusDataMode.LIVE
+            status_data_mode=StatusDataMode.LIVE,
         )
         super().__init__(device_info, status)
         self._client = client
@@ -88,8 +90,10 @@ class DeviceImpl(Device):
         self._last_consumption_refresh: dt.datetime | None = None
         self._consumption_refresh_lock = asyncio.Lock()
         self._consumption_refresh_interval = consumption_refresh_interval
-        self._consumption: dict[dt.date, Consumption] = {} # Initialize _consumption with dt.date as key and single Consumption object for the day
-        
+        self._consumption: dict[
+            dt.date, Consumption
+        ] = {}  # Initialize _consumption with dt.date as key and single Consumption object for the day
+
         if self.has_tank and self._status.tank_status:
             self._tank = TankImpl(self._status.tank_status[0], self, self._client)
 
@@ -116,7 +120,9 @@ class DeviceImpl(Device):
         if self.has_tank and self._status.tank_status:
             self._tank = TankImpl(self._status.tank_status[0], self, self._client)
 
-        if self._consumption_refresh_interval: # Always attempt to refresh if interval is set
+        if (
+            self._consumption_refresh_interval
+        ):  # Always attempt to refresh if interval is set
             await self.__refresh_consumption__()
 
     async def __refresh_consumption__(self) -> None:
@@ -131,17 +137,27 @@ class DeviceImpl(Device):
 
         try:
             now = dt.datetime.now(self._timezone)
-            current_month = now.replace(day=1).date() # Get the first day of the current month
+            current_month = now.replace(
+                day=1
+            ).date()  # Get the first day of the current month
 
             # Check if we need to refresh for the current month
             if (
                 self._last_consumption_refresh is None
-                or (now - self._last_consumption_refresh) >= self._consumption_refresh_interval
-                or not any(d.month == current_month.month and d.year == current_month.year for d in self._consumption.keys()) # If it's a new month, refresh
+                or (now - self._last_consumption_refresh)
+                >= self._consumption_refresh_interval
+                or not any(
+                    d.month == current_month.month and d.year == current_month.year
+                    for d in self._consumption.keys()
+                )  # If it's a new month, refresh
             ):
-                _LOGGER.debug("Refreshing consumption data for %s", current_month.strftime("%Y%m"))
+                _LOGGER.debug(
+                    "Refreshing consumption data for %s", current_month.strftime("%Y%m")
+                )
                 consumption_list = await self._client.get_device_consumption(
-                    self.long_id, DateType.MONTH, now.strftime("%Y%m01") # Use YYYYMM01 for month mode
+                    self.long_id,
+                    DateType.MONTH,
+                    now.strftime("%Y%m01"),  # Use YYYYMM01 for month mode
                 )
                 if consumption_list:
                     # Clear previous month's data if any
@@ -157,12 +173,21 @@ class DeviceImpl(Device):
                                 item_date = utc_dt.date()
                                 self._consumption[item_date] = item
                         except ValueError:
-                            _LOGGER.warning("Could not parse date from consumption item: %s", item.data_time)
+                            _LOGGER.warning(
+                                "Could not parse date from consumption item: %s",
+                                item.data_time,
+                            )
                     self._last_consumption_refresh = now
                 else:
-                    _LOGGER.warning("Failed to retrieve consumption data for %s", current_month.strftime("%Y%m"))
+                    _LOGGER.warning(
+                        "Failed to retrieve consumption data for %s",
+                        current_month.strftime("%Y%m"),
+                    )
             else:
-                _LOGGER.debug("Consumption data for %s is still fresh, skipping refresh", current_month.strftime("%Y%m"))
+                _LOGGER.debug(
+                    "Consumption data for %s is still fresh, skipping refresh",
+                    current_month.strftime("%Y%m"),
+                )
 
         finally:
             self._consumption_refresh_lock.release()
@@ -199,7 +224,11 @@ class DeviceImpl(Device):
             else OperationStatus.ON
         )
 
-        tank_operation_status = self.tank.operation_status if self.has_tank and self.tank else OperationStatus.OFF
+        tank_operation_status = (
+            self.tank.operation_status
+            if self.has_tank and self.tank
+            else OperationStatus.OFF
+        )
 
         # Prepare zone temperature updates to be sent along with operation mode
         zone_temperature_updates: list[ZoneTemperatureSetUpdate] = []
@@ -215,7 +244,12 @@ class DeviceImpl(Device):
                 )
 
         await self._client.post_device_operation_update(
-            self.long_id, mode, zones, operation_status, tank_operation_status, zone_temperature_updates
+            self.long_id,
+            mode,
+            zones,
+            operation_status,
+            tank_operation_status,
+            zone_temperature_updates,
         )
 
     async def set_temperature(
@@ -224,23 +258,27 @@ class DeviceImpl(Device):
         if not zone_id:
             _LOGGER.warning("No zone id provided to set_temperature")
             return
-         
+
         zone = self.zones.get(zone_id)
         if not zone:
             _LOGGER.warning("Zone does not exist.")
             return
-            
+
         if not zone.supports_set_temperature:
             _LOGGER.warning("Zone does not support setting temperature.")
             return
 
         if self.mode in [ExtendedOperationMode.AUTO_COOL, ExtendedOperationMode.COOL]:
-            _LOGGER.info(f"Setting cool temperature for zone {zone_id} to {temperature}")
+            _LOGGER.info(
+                f"Setting cool temperature for zone {zone_id} to {temperature}"
+            )
             await self._client.post_device_zone_cool_temperature(
                 self.long_id, zone_id, temperature
             )
         elif self.mode in [ExtendedOperationMode.AUTO_HEAT, ExtendedOperationMode.HEAT]:
-            _LOGGER.info(f"Setting heat temperature for zone {zone_id} to {temperature}")
+            _LOGGER.info(
+                f"Setting heat temperature for zone {zone_id} to {temperature}"
+            )
             await self._client.post_device_zone_heat_temperature(
                 self.long_id, zone_id, temperature
             )
@@ -257,7 +295,7 @@ class DeviceImpl(Device):
         :param consumption_type: The consumption type to get.
         """
         day = date.date()
-        await self.__refresh_consumption__() # Ensure data is fresh
+        await self.__refresh_consumption__()  # Ensure data is fresh
 
         consumption_obj = self._consumption.get(day)
         if not consumption_obj:
@@ -286,7 +324,9 @@ class DeviceImpl(Device):
         if not consumption_obj:
             # Schedule a refresh if data is not available
             # self.hass.async_create_task(self.__refresh_consumption__())
-            raise DataNotAvailableError(f"Consumption for {day} is not yet available. Scheduling refresh.")
+            raise DataNotAvailableError(
+                f"Consumption for {day} is not yet available. Scheduling refresh."
+            )
 
         if consumption_type == ConsumptionType.HEAT:
             return consumption_obj.heat_consumption

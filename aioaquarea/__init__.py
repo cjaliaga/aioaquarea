@@ -1,4 +1,5 @@
 """Asynchronous library to control Panasonic Aquarea devices"""
+
 from __future__ import annotations
 
 from typing import Tuple
@@ -35,7 +36,7 @@ from .errors import (
 from .statistics import Consumption, ConsumptionType, DateType
 
 __all__: Tuple[str, ...] = (
-    "Client", # Keep "Client" in __all__ as it's aliased
+    "Client",  # Keep "Client" in __all__ as it's aliased
     "Device",
     "ClientError",
     "RequestFailedError",
@@ -64,4 +65,3 @@ __all__: Tuple[str, ...] = (
     "AquareaEnvironment",
     "SpecialStatus",
 )
-

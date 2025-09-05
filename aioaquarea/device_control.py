@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import datetime as dt
 from typing import TYPE_CHECKING
 
 from .auth import PanasonicRequestHeader
@@ -47,7 +46,7 @@ class AquareaDeviceControl:
             f"{AQUAREA_SERVICE_DEVICES}/{long_device_id}",
             headers=PanasonicRequestHeader.get_aqua_headers(
                 content_type="application/json",
-                referer=f"{self._base_url}{AQUAREA_SERVICE_A2W_STATUS_DISPLAY}"
+                referer=f"{self._base_url}{AQUAREA_SERVICE_A2W_STATUS_DISPLAY}",
             ),
             json=data,
         )
@@ -63,13 +62,13 @@ class AquareaDeviceControl:
                 "gwid": long_device_id,
                 "tankStatus": {
                     "heatSet": new_temperature,
-                }
-            }
+                },
+            },
         }
 
         await self._api_client.request(
             "POST",
-            url="remote/v1/app/common/transfer", # Specific URL for transfer API
+            url="remote/v1/app/common/transfer",  # Specific URL for transfer API
             json=data,
             throw_on_error=True,
         )
@@ -96,15 +95,13 @@ class AquareaDeviceControl:
             "bodyParam": {
                 "gwid": long_device_id,
                 "zoneStatus": zone_status_list,
-                "tankStatus": {
-                    "operationStatus": new_operation_status.value
-                }
-            }
+                "tankStatus": {"operationStatus": new_operation_status.value},
+            },
         }
 
         await self._api_client.request(
             "POST",
-            url="remote/v1/app/common/transfer", # Specific URL for transfer API
+            url="remote/v1/app/common/transfer",  # Specific URL for transfer API
             json=data,
             throw_on_error=True,
         )
@@ -116,7 +113,8 @@ class AquareaDeviceControl:
         zones: dict[int, OperationStatus],
         operation_status: OperationStatus,
         tank_operation_status: OperationStatus,
-        zone_temperature_updates: list[ZoneTemperatureSetUpdate] | None = None, # New parameter
+        zone_temperature_updates: list[ZoneTemperatureSetUpdate]
+        | None = None,  # New parameter
     ) -> None:
         """Post device operation update."""
         # Construct zoneStatus list based on provided zones and optional temperature updates
@@ -144,15 +142,13 @@ class AquareaDeviceControl:
                 "operationMode": mode.value,
                 "operationStatus": operation_status.value,
                 "zoneStatus": zone_status_list,
-                "tankStatus": {
-                    "operationStatus": tank_operation_status.value
-                }
-            }
+                "tankStatus": {"operationStatus": tank_operation_status.value},
+            },
         }
 
         await self._api_client.request(
             "POST",
-            url="remote/v1/app/common/transfer", # Specific URL for transfer API
+            url="remote/v1/app/common/transfer",  # Specific URL for transfer API
             json=data,
             throw_on_error=True,
         )
@@ -190,7 +186,7 @@ class AquareaDeviceControl:
             f"{AQUAREA_SERVICE_DEVICES}/{long_id}",
             headers=PanasonicRequestHeader.get_aqua_headers(
                 content_type="application/json",
-                referer=f"{self._base_url}{AQUAREA_SERVICE_A2W_STATUS_DISPLAY}"
+                referer=f"{self._base_url}{AQUAREA_SERVICE_A2W_STATUS_DISPLAY}",
             ),
             json=data,
         )
@@ -225,8 +221,8 @@ class AquareaDeviceControl:
                         "zoneId": zone_id,
                         key: temperature,
                     }
-                ]
-            }
+                ],
+            },
         }
 
         response = await self._api_client.request(
@@ -245,7 +241,7 @@ class AquareaDeviceControl:
             f"{AQUAREA_SERVICE_DEVICES}/{long_id}",
             headers=PanasonicRequestHeader.get_aqua_headers(
                 content_type="application/json",
-                referer=f"{self._base_url}{AQUAREA_SERVICE_A2W_STATUS_DISPLAY}"
+                referer=f"{self._base_url}{AQUAREA_SERVICE_A2W_STATUS_DISPLAY}",
             ),
             json=data,
         )
@@ -255,10 +251,7 @@ class AquareaDeviceControl:
         data = {
             "apiName": "/remote/v1/api/devices",
             "requestMethod": "POST",
-            "bodyParam": {
-                "gwid": long_id,
-                "forceDHW": force_dhw.value
-            }
+            "bodyParam": {"gwid": long_id, "forceDHW": force_dhw.value},
         }
 
         await self._api_client.request(
@@ -275,10 +268,7 @@ class AquareaDeviceControl:
         data = {
             "apiName": "/remote/v1/api/devices",
             "requestMethod": "POST",
-            "bodyParam": {
-                "gwid": long_id,
-                "forceHeater": force_heater.value
-            }
+            "bodyParam": {"gwid": long_id, "forceHeater": force_heater.value},
         }
 
         await self._api_client.request(
@@ -295,10 +285,7 @@ class AquareaDeviceControl:
         data = {
             "apiName": "/remote/v1/api/devices",
             "requestMethod": "POST",
-            "bodyParam": {
-                "gwid": long_id,
-                "holidayTimer": holiday_timer.value
-            }
+            "bodyParam": {"gwid": long_id, "holidayTimer": holiday_timer.value},
         }
 
         await self._api_client.request(
@@ -313,10 +300,7 @@ class AquareaDeviceControl:
         data = {
             "apiName": "/remote/v1/api/devices",
             "requestMethod": "POST",
-            "bodyParam": {
-                "gwid": long_id,
-                "forcedefrost": 1
-            }
+            "bodyParam": {"gwid": long_id, "forcedefrost": 1},
         }
 
         await self._api_client.request(
@@ -344,7 +328,7 @@ class AquareaDeviceControl:
             f"{AQUAREA_SERVICE_DEVICES}/{long_id}",
             headers=PanasonicRequestHeader.get_aqua_headers(
                 content_type="application/json",
-                referer=f"{self._base_url}{AQUAREA_SERVICE_A2W_STATUS_DISPLAY}"
+                referer=f"{self._base_url}{AQUAREA_SERVICE_A2W_STATUS_DISPLAY}",
             ),
             json=data,
         )

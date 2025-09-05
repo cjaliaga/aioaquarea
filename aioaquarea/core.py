@@ -1,4 +1,5 @@
 """Aquarea Client for asyncio."""
+
 from __future__ import annotations
 
 import asyncio
@@ -35,7 +36,8 @@ from .statistics import Consumption, DateType
 
 _LOGGER = logging.getLogger(__name__)
 
-class AquareaClient: # Renamed Client to AquareaClient
+
+class AquareaClient:  # Renamed Client to AquareaClient
     """Aquarea Client."""
 
     def __init__(
@@ -86,11 +88,27 @@ class AquareaClient: # Renamed Client to AquareaClient
         )
         self._settings = PanasonicSettings()
         self._app_version = CCAppVersion()
-        self._authenticator = Authenticator(self._sess, self._settings, self._app_version, self._environment, self._logger)
-        self._device_manager = DeviceManager(self, self._settings, self._app_version, self._logger)
-        self._api_client = AquareaAPIClient(self._sess, self._settings, self._app_version, self._environment, self._logger)
+        self._authenticator = Authenticator(
+            self._sess,
+            self._settings,
+            self._app_version,
+            self._environment,
+            self._logger,
+        )
+        self._device_manager = DeviceManager(
+            self, self._settings, self._app_version, self._logger
+        )
+        self._api_client = AquareaAPIClient(
+            self._sess,
+            self._settings,
+            self._app_version,
+            self._environment,
+            self._logger,
+        )
         self._device_control = AquareaDeviceControl(self._api_client, self._base_url)
-        self._consumption_manager = AquareaConsumptionManager(self._api_client, self._base_url, dt.timezone.utc) # Pass timezone
+        self._consumption_manager = AquareaConsumptionManager(
+            self._api_client, self._base_url, dt.timezone.utc
+        )  # Pass timezone
         self._settings.username = username
         self._settings.password = password
         self._settings.access_token = self._api_client.access_token
@@ -100,12 +118,12 @@ class AquareaClient: # Renamed Client to AquareaClient
         self._settings.clientId = None
 
     @property
-    def username(self) -> str:
+    def username(self) -> str | None:
         """The username used to login."""
         return self._username
 
     @property
-    def password(self) -> str:
+    def password(self) -> str | None:
         """Return the password."""
         return self._password
 
@@ -128,7 +146,7 @@ class AquareaClient: # Renamed Client to AquareaClient
         # We don't have an expiration time, so we assume the token is valid
         if not self._api_client.token_expiration:
             return True
-        
+
         now = dt.datetime.now(tz=dt.timezone.utc)
         return now < self._api_client.token_expiration
 
@@ -145,6 +163,9 @@ class AquareaClient: # Renamed Client to AquareaClient
             if self._last_login > intent:
                 return
 
+            # Initialize app version on first login
+            await self._app_version.init()
+
             if self._environment is AquareaEnvironment.DEMO:
                 # In a real scenario, this would be handled by the Authenticator
                 _ = await self._api_client.request("GET", "", referer=self._base_url)
@@ -152,11 +173,18 @@ class AquareaClient: # Renamed Client to AquareaClient
                     dt.datetime.utcnow(), tz=dt.timezone.utc
                 ) + dt.timedelta(days=1)
             else:
-                await self._authenticator.authenticate(self._username, self._password)
-                
+                if self._username and self._password:
+                    await self._authenticator.authenticate(
+                        self._username, self._password
+                    )
+                else:
+                    _LOGGER.error("Missing User name and/or password, cannot login")
+
             self._last_login = dt.datetime.now()
             self._api_client.access_token = self._settings.access_token
-            self._api_client.token_expiration = dt.datetime.fromtimestamp(self._settings.expires_at, tz=dt.timezone.utc)
+            self._api_client.token_expiration = dt.datetime.fromtimestamp(
+                self._settings.expires_at, tz=dt.timezone.utc
+            )
             # Removed await self._device_manager.get_groups() as it's not a public method and device fetching handles it.
         finally:
             self._login_lock.release()
@@ -188,6 +216,8 @@ class AquareaClient: # Renamed Client to AquareaClient
             device_info = next(
                 filter(lambda d: d.device_id == device_id, devices), None
             )
+            if not device_info:
+                raise ValueError(f"Device with id '{device_id}' not found")
 
         device_status = await self.get_device_status(device_info)
         device_impl = DeviceImpl(
@@ -213,14 +243,18 @@ class AquareaClient: # Renamed Client to AquareaClient
         self, long_device_id: str, new_operation_status: OperationStatus
     ) -> None:
         """Post device operation status."""
-        return await self._device_control.post_device_operation_status(long_device_id, new_operation_status)
+        return await self._device_control.post_device_operation_status(
+            long_device_id, new_operation_status
+        )
 
     @auth_required
     async def post_device_tank_temperature(
         self, long_device_id: str, new_temperature: int
     ) -> None:
         """Post device tank temperature."""
-        return await self._device_control.post_device_tank_temperature(long_device_id, new_temperature)
+        return await self._device_control.post_device_tank_temperature(
+            long_device_id, new_temperature
+        )
 
     @auth_required
     async def post_device_tank_operation_status(
@@ -230,7 +264,9 @@ class AquareaClient: # Renamed Client to AquareaClient
         zones: list[DeviceZoneStatus],
     ) -> None:
         """Post device tank operation status."""
-        return await self._device_control.post_device_tank_operation_status(long_device_id, new_operation_status, zones)
+        return await self._device_control.post_device_tank_operation_status(
+            long_device_id, new_operation_status, zones
+        )
 
     @auth_required
     async def post_device_operation_update(
@@ -243,7 +279,14 @@ class AquareaClient: # Renamed Client to AquareaClient
         zone_temperature_updates: list[ZoneTemperatureSetUpdate] | None = None,
     ) -> None:
         """Post device operation update."""
-        return await self._device_control.post_device_operation_update(long_id, mode, zones, operation_status, tank_operation_status, zone_temperature_updates)
+        return await self._device_control.post_device_operation_update(
+            long_id,
+            mode,
+            zones,
+            operation_status,
+            tank_operation_status,
+            zone_temperature_updates,
+        )
 
     @auth_required
     async def post_device_set_special_status(
@@ -253,26 +296,34 @@ class AquareaClient: # Renamed Client to AquareaClient
         zones: list[ZoneTemperatureSetUpdate],
     ) -> None:
         """Post device operation update."""
-        return await self._device_control.post_device_set_special_status(long_id, special_status, zones)
+        return await self._device_control.post_device_set_special_status(
+            long_id, special_status, zones
+        )
 
     async def post_device_zone_heat_temperature(
         self, long_id: str, zone_id: int, temperature: int
     ) -> None:
         """Post device zone heat temperature."""
-        return await self._device_control.post_device_zone_heat_temperature(long_id, zone_id, temperature)
+        return await self._device_control.post_device_zone_heat_temperature(
+            long_id, zone_id, temperature
+        )
 
     async def post_device_zone_cool_temperature(
         self, long_id: str, zone_id: int, temperature: int
     ) -> None:
         """Post device zone cool temperature."""
-        return await self._device_control.post_device_zone_cool_temperature(long_id, zone_id, temperature)
+        return await self._device_control.post_device_zone_cool_temperature(
+            long_id, zone_id, temperature
+        )
 
     @auth_required
     async def _post_device_zone_temperature(
         self, long_id: str, zone_id: int, temperature: int, key: str
     ) -> None:
         """Post device zone temperature."""
-        return await self._device_control._post_device_zone_temperature(long_id, zone_id, temperature, key)
+        return await self._device_control._post_device_zone_temperature(
+            long_id, zone_id, temperature, key
+        )
 
     @auth_required
     async def post_device_set_quiet_mode(self, long_id: str, mode: QuietMode) -> None:
@@ -289,14 +340,18 @@ class AquareaClient: # Renamed Client to AquareaClient
         self, long_id: str, force_heater: ForceHeater
     ) -> None:
         """Post quiet mode."""
-        return await self._device_control.post_device_force_heater(long_id, force_heater)
+        return await self._device_control.post_device_force_heater(
+            long_id, force_heater
+        )
 
     @auth_required
     async def post_device_holiday_timer(
         self, long_id: str, holiday_timer: HolidayTimer
     ) -> None:
         """Post quiet mode."""
-        return await self._device_control.post_device_holiday_timer(long_id, holiday_timer)
+        return await self._device_control.post_device_holiday_timer(
+            long_id, holiday_timer
+        )
 
     @auth_required
     async def post_device_request_defrost(self, long_id: str) -> None:
@@ -308,13 +363,17 @@ class AquareaClient: # Renamed Client to AquareaClient
         self, long_id: str, powerful_time: PowerfulTime
     ) -> None:
         """Post powerful time."""
-        return await self._device_control.post_device_set_powerful_time(long_id, powerful_time)
+        return await self._device_control.post_device_set_powerful_time(
+            long_id, powerful_time
+        )
 
     async def get_device_consumption(
         self, long_id: str, aggregation: DateType, date_input: str
     ) -> List[Consumption] | None:
         """Get device consumption."""
-        return await self._consumption_manager.get_device_consumption(long_id, aggregation, date_input)
+        return await self._consumption_manager.get_device_consumption(
+            long_id, aggregation, date_input
+        )
 
     async def close(self) -> None:
         """Close the aiohttp client session."""

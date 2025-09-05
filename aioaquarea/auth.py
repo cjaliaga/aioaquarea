@@ -1,16 +1,12 @@
-import asyncio
 import base64
 import datetime as dt
-import functools
 import hashlib
-import html
 import json
 import logging
 import re
 import secrets
 import string
 import time
-from typing import Optional
 import urllib.parse
 
 import aiohttp
@@ -31,6 +27,7 @@ from .errors import AuthenticationError, AuthenticationErrorCodes
 
 _LOGGER = logging.getLogger(__name__)
 
+
 class PanasonicSettings:
     def __init__(self):
         self.access_token = None
@@ -47,41 +44,79 @@ class PanasonicSettings:
         self.expires_at = expires_at
         self.scope = scope
 
+
 class CCAppVersion:
     def __init__(self):
-        self.version = DEFAULT_X_APP_VERSION # Default version
+        self.version = DEFAULT_X_APP_VERSION  # Default version
+
+    async def init(self):
+        # Try to fetch version on initialization
+        await self.refresh()
+
     async def refresh(self):
-        # In a real scenario, this would fetch the latest app version
-        pass
+        # Fetch the latest app version from App Store
+        try:
+            async with aiohttp.ClientSession() as session:
+                async with session.get(
+                    "https://apps.apple.com/de/app/panasonic-comfort-cloud/id1348640525"
+                ) as response:
+                    if response.status == 200:
+                        html_content = await response.text()
+                        # Look for version pattern in the HTML
+                        version_match = re.search(
+                            r"Version\s+(\d+\.\d+\.\d+)", html_content
+                        )
+                        if version_match:
+                            new_version = version_match.group(1)
+                            _LOGGER.debug(f"Found new app version: {new_version}")
+                            self.version = new_version
+                        else:
+                            _LOGGER.warning(
+                                f"Could not parse version from App Store page, keeping current version: {self.version}"
+                            )
+                    else:
+                        _LOGGER.error(
+                            f"Failed to fetch App Store page: {response.status}, keeping current version: {self.version}"
+                        )
+        except Exception as e:
+            _LOGGER.error(
+                f"Error fetching app version: {e}, keeping current version: {self.version}"
+            )
+
     async def get(self):
         return self.version
 
+
 class PanasonicRequestHeader:
-
     @staticmethod
-    async def get(settings: PanasonicSettings, app_version: CCAppVersion, include_client_id = True):
+    async def get(
+        settings: PanasonicSettings, app_version: CCAppVersion, include_client_id=True
+    ):
         if settings.access_token is None:
-            raise AuthenticationError(AuthenticationErrorCodes.API_ERROR, "Access token is missing from settings.")
+            raise AuthenticationError(
+                AuthenticationErrorCodes.API_ERROR,
+                "Access token is missing from settings.",
+            )
 
-        now = dt.datetime.now() # Use dt for datetime
-        timestamp = now.strftime("%Y-%m-%d %H:%M:%S")    
-        api_key = PanasonicRequestHeader._get_api_key(timestamp, settings.access_token)  
+        now = dt.datetime.now()  # Use dt for datetime
+        timestamp = now.strftime("%Y-%m-%d %H:%M:%S")
+        api_key = PanasonicRequestHeader._get_api_key(timestamp, settings.access_token)
         _LOGGER.debug(f"Request Timestamp: {timestamp} key: {api_key}")
-        headers={
-                "accept": "application/json; charset=utf-8",
-                "content-type": "application/json",
-                "user-agent": "G-RAC",
-                "x-app-name": "Comfort Cloud",
-                "x-app-timestamp": timestamp,
-                "x-app-type": "1",
-                "x-app-version": await app_version.get(),
-                "x-cfc-api-key": api_key,
-                "x-user-authorization-v2": "Bearer " + settings.access_token
-            }
-        if (include_client_id and settings.clientId):
+        headers = {
+            "accept": "application/json; charset=utf-8",
+            "content-type": "application/json",
+            "user-agent": "G-RAC",
+            "x-app-name": "Comfort Cloud",
+            "x-app-timestamp": timestamp,
+            "x-app-type": "1",
+            "x-app-version": await app_version.get(),
+            "x-cfc-api-key": api_key,
+            "x-user-authorization-v2": "Bearer " + settings.access_token,
+        }
+        if include_client_id and settings.clientId:
             headers["x-client-id"] = settings.clientId
         return headers
-    
+
     @staticmethod
     def get_aqua_headers(
         content_type: str = "application/x-www-form-urlencoded",
@@ -105,53 +140,83 @@ class PanasonicRequestHeader:
             "referer": referer,
         }
         return headers
-        
+
     @staticmethod
     def _get_api_key(timestamp, token):
         try:
-            date = dt.datetime.strptime(timestamp, '%Y-%m-%d %H:%M:%S') # Use dt for datetime
-            timestamp_ms = str(int(date.replace(tzinfo=dt.timezone.utc).timestamp() * 1000)) # Use dt for datetime
-            
+            date = dt.datetime.strptime(
+                timestamp, "%Y-%m-%d %H:%M:%S"
+            )  # Use dt for datetime
+            timestamp_ms = str(
+                int(date.replace(tzinfo=dt.timezone.utc).timestamp() * 1000)
+            )  # Use dt for datetime
+
             components = [
-                'Comfort Cloud'.encode('utf-8'),
-                '521325fb2dd486bf4831b47644317fca'.encode('utf-8'),
-                timestamp_ms.encode('utf-8'),
-                'Bearer '.encode('utf-8'),
-                token.encode('utf-8')
+                "Comfort Cloud".encode("utf-8"),
+                "521325fb2dd486bf4831b47644317fca".encode("utf-8"),
+                timestamp_ms.encode("utf-8"),
+                "Bearer ".encode("utf-8"),
+                token.encode("utf-8"),
             ]
-                
-            input_buffer = b''.join(components)
+
+            input_buffer = b"".join(components)
             hash_obj = hashlib.sha256()
             hash_obj.update(input_buffer)
             hash_str = hash_obj.hexdigest()
-            
-            result = hash_str[:9] + 'cfc' + hash_str[9:]
+
+            result = hash_str[:9] + "cfc" + hash_str[9:]
             return result
         except Exception as ex:
             _LOGGER.error("Failed to generate API key")
 
+
 # Helper functions from the provided code
 def generate_random_string(length: int) -> str:
-    return ''.join(secrets.choice(string.ascii_letters + string.digits) for _ in range(length))
+    return "".join(
+        secrets.choice(string.ascii_letters + string.digits) for _ in range(length)
+    )
 
-def get_querystring_parameter_from_header_entry_url(response: aiohttp.ClientResponse, header_entry, querystring_parameter):
+
+def get_querystring_parameter_from_header_entry_url(
+    response: aiohttp.ClientResponse, header_entry, querystring_parameter
+):
     header_entry_value = response.headers[header_entry]
     parsed_url = urllib.parse.urlparse(header_entry_value)
     params = urllib.parse.parse_qs(parsed_url.query)
     return params.get(querystring_parameter, [None])[0]
 
-async def check_response(response: aiohttp.ClientResponse, step_name: str, expected_status: int):
+
+async def check_response(
+    response: aiohttp.ClientResponse, step_name: str, expected_status: int
+):
     if response.status != expected_status:
         response_text = await response.text()
-        _LOGGER.error(f"Error in {step_name}: Expected status {expected_status}, got {response.status}. Response: {response_text}")
-        raise AuthenticationError(AuthenticationErrorCodes.API_ERROR, f"Error in {step_name}: Unexpected status code {response.status}")
+        _LOGGER.error(
+            f"Error in {step_name}: Expected status {expected_status}, got {response.status}. Response: {response_text}"
+        )
+        raise AuthenticationError(
+            AuthenticationErrorCodes.API_ERROR,
+            f"Error in {step_name}: Unexpected status code {response.status}",
+        )
+
 
 async def has_new_version_been_published(response: aiohttp.ClientResponse) -> bool:
-    # This is a placeholder, in a real scenario this would check for new app versions
+    if response.status == 401:
+        response_json = await response.json()
+        if response_json["code"] == 4106:
+            return True
     return False
 
+
 class Authenticator:
-    def __init__(self, session: aiohttp.ClientSession, settings: PanasonicSettings, app_version: CCAppVersion, environment: AquareaEnvironment, logger: logging.Logger):
+    def __init__(
+        self,
+        session: aiohttp.ClientSession,
+        settings: PanasonicSettings,
+        app_version: CCAppVersion,
+        environment: AquareaEnvironment,
+        logger: logging.Logger,
+    ):
         self._sess = session
         self._settings = settings
         self._app_version = app_version
@@ -159,38 +224,42 @@ class Authenticator:
         self._logger = logger
 
     async def authenticate(self, username: str, password: str):
-        self._sess.cookie_jar.clear_domain('authglb.digital.panasonic.com')
+        self._sess.cookie_jar.clear_domain("authglb.digital.panasonic.com")
         # generate initial state and code_challenge
         code_verifier = generate_random_string(43)
 
-        code_challenge = base64.urlsafe_b64encode(
-            hashlib.sha256(
-                code_verifier.encode('utf-8')
-            ).digest()).split('='.encode('utf-8'))[0].decode('utf-8')
-        
+        code_challenge = (
+            base64.urlsafe_b64encode(
+                hashlib.sha256(code_verifier.encode("utf-8")).digest()
+            )
+            .split("=".encode("utf-8"))[0]
+            .decode("utf-8")
+        )
+
         authorization_response = await self._authorize(code_challenge)
-        authorization_redirect = authorization_response.headers['Location']
-        
-        # check if the user can skip the authentication workflows - in that case, 
+        authorization_redirect = authorization_response.headers["Location"]
+
+        # check if the user can skip the authentication workflows - in that case,
         # the location is directly pointing to the redirect url with the "code"
         # query parameter included
         if authorization_redirect.startswith(REDIRECT_URI):
             code = get_querystring_parameter_from_header_entry_url(
-                authorization_response, 'Location', 'code')
+                authorization_response, "Location", "code"
+            )
         else:
             code = await self._login(authorization_response, username, password)
-        
+
         await self._request_new_token(code, code_verifier)
         await self._retrieve_client_acc()
-        
+
     async def refresh_token(self):
         self._logger.debug("Refreshing token")
-        # do before, so that timestamp is older rather than newer        
+        # do before, so that timestamp is older rather than newer
         now = dt.datetime.now()
         unix_time_token_received = time.mktime(now.timetuple())
 
         response = await self._sess.post(
-            f'{BASE_PATH_AUTH}/oauth/token',
+            f"{BASE_PATH_AUTH}/oauth/token",
             headers={
                 "Auth0-Client": AUTH_0_CLIENT,
                 "user-agent": AUTH_API_USER_AGENT,
@@ -198,23 +267,26 @@ class Authenticator:
             json={
                 "scope": self._settings.scope,
                 "client_id": APP_CLIENT_ID,
-                "grant_type": "refresh_token"
+                "grant_type": "refresh_token",
             },
-            allow_redirects=False)
-        await check_response(response, 'refresh_token', 200)
+            allow_redirects=False,
+        )
+        await check_response(response, "refresh_token", 200)
         token_response = json.loads(await response.text())
         self._set_token(token_response, unix_time_token_received)
-
 
     async def _authorize(self, challenge) -> aiohttp.ClientResponse:
         # --------------------------------------------------------------------
         # AUTHORIZE
         # --------------------------------------------------------------------
         state = generate_random_string(20)
-        self._logger.debug("Requesting authorization, %s", json.dumps({'challenge': challenge, 'state': state}))
+        self._logger.debug(
+            "Requesting authorization, %s",
+            json.dumps({"challenge": challenge, "state": state}),
+        )
 
         response = await self._sess.get(
-            f'{BASE_PATH_AUTH}/authorize',
+            f"{BASE_PATH_AUTH}/authorize",
             headers={
                 "user-agent": AUTH_API_USER_AGENT,
             },
@@ -230,31 +302,41 @@ class Authenticator:
                 "redirect_uri": REDIRECT_URI,
                 "state": state,
             },
-            allow_redirects=False)
-        await check_response(response, 'authorize', 302)
+            allow_redirects=False,
+        )
+        if await has_new_version_been_published(response):
+            await self._app_version.refresh()
+        await check_response(response, "authorize", 302)
         return response
-        
-        
-    async def _login(self, authorization_response: aiohttp.ClientResponse, username, password):
-        
+
+    async def _login(
+        self, authorization_response: aiohttp.ClientResponse, username, password
+    ):
         state = get_querystring_parameter_from_header_entry_url(
-                authorization_response, 'Location', 'state')
-        location = authorization_response.headers['Location']
-        self._logger.debug("Following authorization redirect, %s", json.dumps({'url': f"{BASE_PATH_AUTH}/{location}", 'state': state}))
+            authorization_response, "Location", "state"
+        )
+        location = authorization_response.headers["Location"]
+        self._logger.debug(
+            "Following authorization redirect, %s",
+            json.dumps({"url": f"{BASE_PATH_AUTH}/{location}", "state": state}),
+        )
         response = await self._sess.get(
-                f"{BASE_PATH_AUTH}/{location}",
-                allow_redirects=False)
-        await check_response(response, 'authorize_redirect', 200)
+            f"{BASE_PATH_AUTH}/{location}", allow_redirects=False
+        )
+        await check_response(response, "authorize_redirect", 200)
 
         # get the "_csrf" cookie
-        csrf_cookie = response.cookies['_csrf']
-        
+        csrf_cookie = response.cookies["_csrf"]
+
         # -------------------------------------------------------------------
         # LOGIN
         # -------------------------------------------------------------------
-        self._logger.debug("Authenticating with username and password, %s", json.dumps({'csrf':csrf_cookie,'state':state}))
+        self._logger.debug(
+            "Authenticating with username and password, %s",
+            json.dumps({"csrf": csrf_cookie, "state": state}),
+        )
         response = await self._sess.post(
-            f'{BASE_PATH_AUTH}/usernamepassword/login',
+            f"{BASE_PATH_AUTH}/usernamepassword/login",
             headers={
                 "Auth0-Client": AUTH_0_CLIENT,
                 "user-agent": AUTH_API_USER_AGENT,
@@ -272,10 +354,11 @@ class Authenticator:
                 "username": username,
                 "password": password,
                 "lang": "en",
-                "connection": "PanasonicID-Authentication"
+                "connection": "PanasonicID-Authentication",
             },
-            allow_redirects=False)
-        await check_response(response, 'login', 200)
+            allow_redirects=False,
+        )
+        await check_response(response, "login", 200)
 
         # -------------------------------------------------------------------
         # CALLBACK
@@ -283,7 +366,9 @@ class Authenticator:
 
         # get wa, wresult, wctx from body
         response_text = await response.text()
-        self._logger.debug("Authentication response, %s", json.dumps({'html':response_text}))
+        self._logger.debug(
+            "Authentication response, %s", json.dumps({"html": response_text})
+        )
         soup = BeautifulSoup(response_text, "html.parser")
         input_lines = soup.find_all("input", {"type": "hidden"})
         parameters = dict()
@@ -298,26 +383,34 @@ class Authenticator:
                 "Content-Type": "application/x-www-form-urlencoded",
                 "User-Agent": AUTH_BROWSER_USER_AGENT,
             },
-            allow_redirects=False)
-        await check_response(response, 'login_callback', 302)
+            allow_redirects=False,
+        )
+        await check_response(response, "login_callback", 302)
 
         # ------------------------------------------------------------------
         # FOLLOW REDIRECT
         # ------------------------------------------------------------------
 
-        location = response.headers['Location']
-        self._logger.debug("Callback response, %s", json.dumps({'redirect':location, 'html': await response.text()}))
+        location = response.headers["Location"]
+        self._logger.debug(
+            "Callback response, %s",
+            json.dumps({"redirect": location, "html": await response.text()}),
+        )
 
         response = await self._sess.get(
-            f"{BASE_PATH_AUTH}/{location}",
-            allow_redirects=False)
-        await check_response(response, 'login_redirect', 302)
-        location = response.headers['Location']
-        self._logger.debug("Callback redirect, %s", json.dumps({'redirect':location, 'html': await response.text()}))
+            f"{BASE_PATH_AUTH}/{location}", allow_redirects=False
+        )
+        await check_response(response, "login_redirect", 302)
+        location = response.headers["Location"]
+        self._logger.debug(
+            "Callback redirect, %s",
+            json.dumps({"redirect": location, "html": await response.text()}),
+        )
 
         return get_querystring_parameter_from_header_entry_url(
-                response, 'Location', 'code')
-    
+            response, "Location", "code"
+        )
+
     async def _request_new_token(self, code, code_verifier):
         self._logger.debug("Requesting a new token")
         # do before, so that timestamp is older rather than newer
@@ -325,7 +418,7 @@ class Authenticator:
         unix_time_token_received = time.mktime(now.timetuple())
 
         response = await self._sess.post(
-            f'{BASE_PATH_AUTH}/oauth/token',
+            f"{BASE_PATH_AUTH}/oauth/token",
             headers={
                 "Auth0-Client": AUTH_0_CLIENT,
                 "user-agent": AUTH_API_USER_AGENT,
@@ -336,45 +429,46 @@ class Authenticator:
                 "grant_type": "authorization_code",
                 "code": code,
                 "redirect_uri": REDIRECT_URI,
-                "code_verifier": code_verifier
+                "code_verifier": code_verifier,
             },
-            allow_redirects=False)
-        await check_response(response, 'get_token', 200)
+            allow_redirects=False,
+        )
+        await check_response(response, "get_token", 200)
 
         token_response = json.loads(await response.text())
         self._set_token(token_response, unix_time_token_received)
-        
+
     def _set_token(self, token_response, unix_time_token_received):
         self._settings.set_token(
-            token_response["access_token"], 
+            token_response["access_token"],
             token_response["refresh_token"],
             unix_time_token_received + token_response["expires_in"],
-            token_response["scope"])
-        
+            token_response["scope"],
+        )
+
     async def _retrieve_client_acc(self):
         # ------------------------------------------------------------------
         # RETRIEVE ACC_CLIENT_ID
         # ------------------------------------------------------------------
-        headers= await PanasonicRequestHeader.get(self._settings, self._app_version, include_client_id= False)
-      
+        headers = await PanasonicRequestHeader.get(
+            self._settings, self._app_version, include_client_id=False
+        )
+
         response = await self._sess.post(
-            f'{BASE_PATH_ACC}/auth/v2/login',
-            headers = headers,
-            json={
-                "language": 0
-            })
+            f"{BASE_PATH_ACC}/auth/v2/login", headers=headers, json={"language": 0}
+        )
         if await has_new_version_been_published(response):
             self._logger.info("New version of acc client id has been published")
             await self._app_version.refresh()
             response = await self._sess.post(
-                f'{BASE_PATH_ACC}/auth/v2/login',
-                headers = await PanasonicRequestHeader.get(self._settings, self._app_version, include_client_id= False),
-                json={
-                    "language": 0
-                })
+                f"{BASE_PATH_ACC}/auth/v2/login",
+                headers=await PanasonicRequestHeader.get(
+                    self._settings, self._app_version, include_client_id=False
+                ),
+                json={"language": 0},
+            )
 
-
-        await check_response(response, 'get_acc_client_id', 200)
+        await check_response(response, "get_acc_client_id", 200)
 
         json_body = json.loads(await response.text())
         self._settings.clientId = json_body["clientId"]

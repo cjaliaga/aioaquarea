@@ -1,4 +1,5 @@
 """Errors for aioaquarea."""
+
 from __future__ import annotations
 
 try:
@@ -61,7 +62,8 @@ class AuthenticationErrorCodes(StrEnum):
     INVALID_USERNAME_OR_PASSWORD = "1001-1401"
     INVALID_CREDENTIALS = "1000-1401"
     API_ERROR = "API_ERROR"
-    TOKEN_EXPIRED = "TOKEN_EXPIRED" # Added for token expiration
+    TOKEN_EXPIRED = "TOKEN_EXPIRED"  # Added for token expiration
+
 
 class DataNotAvailableError(Exception):
     """Exception raised when data is not available"""

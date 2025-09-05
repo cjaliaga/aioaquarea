@@ -1,8 +1,7 @@
-import asyncio
 import datetime as dt
 import logging
-from typing import Optional
 import urllib.parse
+from typing import Optional
 
 import aiohttp
 
@@ -11,6 +10,7 @@ from .const import AQUAREA_SERVICE_BASE, AQUAREA_SERVICE_DEMO_BASE, AquareaEnvir
 from .errors import ApiError, AuthenticationError, AuthenticationErrorCodes
 
 _LOGGER = logging.getLogger(__name__)
+
 
 class AquareaAPIClient:
     """Base API client for Aquarea."""
@@ -50,7 +50,9 @@ class AquareaAPIClient:
         """Make a request to Aquarea and return the response."""
 
         # Get base headers including authentication
-        base_headers = await PanasonicRequestHeader.get(self._settings, self._app_version)
+        base_headers = await PanasonicRequestHeader.get(
+            self._settings, self._app_version
+        )
 
         # If headers are explicitly provided by the caller, use them as a base
         # Otherwise, use the base_headers as the starting point
@@ -60,7 +62,7 @@ class AquareaAPIClient:
             # Merge base_headers into the provided headers, allowing provided headers to override
             base_headers.update(headers)
             headers = base_headers
-        
+
         # Merge any headers from kwargs (e.g., from aiohttp's json=data)
         request_headers = kwargs.get("headers", {})
         headers.update(request_headers)
@@ -111,27 +113,42 @@ class AquareaAPIClient:
 
     async def look_for_errors(
         self, data: dict
-    ) -> list[ApiError]: # Changed return type to ApiError
+    ) -> list[ApiError]:  # Changed return type to ApiError
         """Look for errors in the response and return them as a list of ApiError objects."""
         if not isinstance(data, dict):
             return []
 
         messages = data.get("message", [])
         if not isinstance(messages, list):
-            messages = [messages] # Wrap single string message in a list
+            messages = [messages]  # Wrap single string message in a list
 
         api_errors = []
         for error_item in messages:
-            if isinstance(error_item, dict) and "errorMessage" in error_item and "errorCode" in error_item:
+            if (
+                isinstance(error_item, dict)
+                and "errorMessage" in error_item
+                and "errorCode" in error_item
+            ):
                 # Check for token expiration message
                 if "Token expires" in error_item["errorMessage"]:
-                    api_errors.append(AuthenticationError(AuthenticationErrorCodes.TOKEN_EXPIRED, error_item["errorMessage"]))
+                    api_errors.append(
+                        AuthenticationError(
+                            AuthenticationErrorCodes.TOKEN_EXPIRED,
+                            error_item["errorMessage"],
+                        )
+                    )
                 else:
-                    api_errors.append(ApiError(error_item["errorCode"], error_item["errorMessage"]))
+                    api_errors.append(
+                        ApiError(error_item["errorCode"], error_item["errorMessage"])
+                    )
             elif isinstance(error_item, str):
                 # Check for token expiration message in string errors
                 if "Token expires" in error_item:
-                    api_errors.append(AuthenticationError(AuthenticationErrorCodes.TOKEN_EXPIRED, error_item))
+                    api_errors.append(
+                        AuthenticationError(
+                            AuthenticationErrorCodes.TOKEN_EXPIRED, error_item
+                        )
+                    )
                 else:
                     api_errors.append(ApiError("unknown_error_code", error_item))
         return api_errors
