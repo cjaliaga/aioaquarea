@@ -1,4 +1,5 @@
 """Errors for aioaquarea."""
+
 from __future__ import annotations
 
 try:
@@ -14,11 +15,13 @@ class ClientError(Exception):
 class RequestFailedError(ClientError):
     """Exception raised when request to the server fails"""
 
-    def __init__(self, response):
+    def __init__(self, response: str | object):
         self.response = response
         super().__init__()
 
     def __str__(self):
+        if isinstance(self.response, str):
+            return self.response
         return f"Invalid response: {self.response.status} - {self.response.reason}"
 
 
@@ -58,6 +61,9 @@ class AuthenticationErrorCodes(StrEnum):
     SESSION_CLOSED = "1001-0001"
     INVALID_USERNAME_OR_PASSWORD = "1001-1401"
     INVALID_CREDENTIALS = "1000-1401"
+    API_ERROR = "API_ERROR"
+    TOKEN_EXPIRED = "TOKEN_EXPIRED"  # Added for token expiration
+
 
 class DataNotAvailableError(Exception):
     """Exception raised when data is not available"""

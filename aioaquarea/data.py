@@ -1,19 +1,15 @@
 """Data models for aioaquarea."""
+
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
-from enum import IntEnum
 from datetime import datetime
+from enum import Enum, IntEnum, StrEnum
 
 from .const import PANASONIC
 from .statistics import Consumption, ConsumptionType
 from .util import LimitedSizeDict, limit_range
-
-try:
-    from enum import StrEnum
-except ImportError:
-    from strenum import StrEnum
 
 
 class ZoneSensor(StrEnum):
@@ -32,10 +28,102 @@ class SensorMode(StrEnum):
     COMPENSATION_CURVE = "Compensation curve"
 
 
-class OperationMode(StrEnum):
-    COOL = "Cool"
-    HEAT = "Heat"
-    AUTO = "Auto"
+class OperationMode(Enum):
+    Auto = 0
+    Dry = 1
+    Cool = 2
+    Heat = 3
+    Fan = 4
+
+
+class Power(Enum):
+    Off = 0
+    On = 1
+
+
+class AirSwingUD(Enum):
+    Auto = -1
+    Up = 0
+    UpMid = 3
+    Mid = 2
+    DownMid = 4
+    Down = 1
+    Swing = 5
+
+
+class AirSwingLR(Enum):
+    Auto = -1
+    Left = 1
+    LeftMid = 5
+    Mid = 2
+    RightMid = 4
+    Right = 0
+    Unavailable = 6
+
+
+class EcoMode(Enum):
+    Auto = 0
+    Powerful = 1
+    Quiet = 2
+
+
+class AirSwingAutoMode(Enum):
+    Disabled = 1
+    Both = 0
+    AirSwingLR = 3
+    AirSwingUD = 2
+
+
+class FanSpeed(Enum):
+    Auto = 0
+    Low = 1
+    LowMid = 2
+    Mid = 3
+    HighMid = 4
+    High = 5
+
+
+class DataMode(Enum):
+    Day = 0
+    Week = 1
+    Month = 2
+    Year = 4
+
+
+class NanoeMode(Enum):
+    Unavailable = 0
+    Off = 1
+    On = 2
+    ModeG = 3
+    All = 4
+
+
+class EcoNaviMode(Enum):
+    Unavailable = 0
+    Off = 1
+    On = 2
+
+
+class EcoFunctionMode(Enum):
+    Unavailable = 0
+    Off = 1
+    On = 2
+
+
+class ZoneMode(Enum):
+    Off = 0
+    On = 1
+
+
+class IAutoXMode(Enum):
+    Unavailable = 0
+    Off = 1
+    On = 2
+
+
+class StatusDataMode(Enum):
+    LIVE = 0
+    CACHED = 1
 
 
 class OperationStatus(IntEnum):
@@ -43,6 +131,7 @@ class OperationStatus(IntEnum):
 
     ON = 1
     OFF = 0
+    UNKNOWN = 2
 
 
 class ZoneType(StrEnum):
@@ -82,6 +171,13 @@ class DeviceDirection(IntEnum):
     IDLE = 0
     PUMP = 1
     WATER = 2
+
+
+class PumpDuty(IntEnum):
+    """Pump duty"""
+
+    OFF = 0
+    ON = 1
 
 
 class QuietMode(IntEnum):
@@ -136,10 +232,12 @@ class SpecialStatus(IntEnum):
     ECO = 1
     COMFORT = 2
 
+
 @dataclass
 class TemperatureModifiers:
     heat: int | None
     cool: int | None
+
 
 @dataclass
 class TankStatus:
@@ -200,7 +298,9 @@ class DeviceInfo:
     mode: OperationMode
     has_tank: bool
     firmware_version: str
+    model: str  # Added model attribute
     zones: list[DeviceZoneInfo]
+    status_data_mode: StatusDataMode  # New field
 
 
 @dataclass()
@@ -219,8 +319,8 @@ class DeviceStatus:
     temperature_outdoor: int
     operation_mode: ExtendedOperationMode
     fault_status: list[FaultError]
-    direction: int
-    pump_duty: int
+    direction: DeviceDirection
+    pump_duty: PumpDuty
     tank_status: list[TankStatus]
     zones: list[DeviceZoneStatus]
     quiet_mode: QuietMode
@@ -236,6 +336,7 @@ class ZoneTemperatureSetUpdate:
     zone_id: int
     cool_set: int | None
     heat_set: int | None
+
 
 @dataclass
 class OperationStatusUpdate:
@@ -257,16 +358,21 @@ class DeviceZone:
     """Device zone"""
 
     _info: DeviceZoneInfo
-    _status: DeviceZoneStatus
+    _status: DeviceZoneStatus | None
 
-    def __init__(self, info: DeviceZoneInfo, status: DeviceZoneStatus) -> None:
+    def __init__(self, info: DeviceZoneInfo, status: DeviceZoneStatus | None) -> None:
         self._info = info
         self._status = status
 
         if self.supports_special_status:
+            eco_heat = self._status.eco_heat if self._status else None
+            eco_cool = self._status.eco_cool if self._status else None
+            comfort_heat = self._status.comfort_heat if self._status else None
+            comfort_cool = self._status.comfort_cool if self._status else None
+
             self._temperature_modifiers = {
-                SpecialStatus.ECO: TemperatureModifiers(self._status.eco_heat, self._status.eco_cool),
-                SpecialStatus.COMFORT: TemperatureModifiers(self._status.comfort_heat, self._status.comfort_cool)
+                SpecialStatus.ECO: TemperatureModifiers(eco_heat, eco_cool),
+                SpecialStatus.COMFORT: TemperatureModifiers(comfort_heat, comfort_cool),
             }
 
     @property
@@ -282,12 +388,12 @@ class DeviceZone:
     @property
     def operation_status(self) -> OperationStatus:
         """Gets the zone operation status (ON/OFF)"""
-        return self._status.operation_status
+        return self._status.operation_status if self._status else OperationStatus.OFF
 
     @property
     def temperature(self) -> int:
         """Gets the zone temperature"""
-        return self._status.temperature
+        return self._status.temperature if self._status else 0
 
     @property
     def cool_mode(self) -> bool:
@@ -317,32 +423,32 @@ class DeviceZone:
     @property
     def cool_target_temperature(self) -> int | None:
         """Gets the target temperature for cool mode of the zone"""
-        return self._status.cool_set
+        return self._status.cool_set if self._status else None
 
     @property
     def heat_target_temperature(self) -> int | None:
         """Gets the target temperature for heat mode of the zone"""
-        return self._status.heat_set
+        return self._status.heat_set if self._status else None
 
     @property
     def cool_max(self) -> int | None:
         """Gets the maximum allowed temperature for cool mode of the zone"""
-        return self._status.cool_max
+        return self._status.cool_max if self._status else None
 
     @property
     def cool_min(self) -> int | None:
         """Gets the minimum allowed temperature for cool mode of the zone"""
-        return self._status.cool_min
+        return self._status.cool_min if self._status else None
 
     @property
     def heat_max(self) -> int | None:
         """Gets the maximum allowed temperature for heat mode of the zone"""
-        return self._status.heat_max
+        return self._status.heat_max if self._status else None
 
     @property
     def heat_min(self) -> int | None:
         """Gets the minimum allowed temperature for heat mode of the zone"""
-        return self._status.heat_min
+        return self._status.heat_min if self._status else None
 
     @property
     def supports_set_temperature(self) -> bool:
@@ -353,17 +459,17 @@ class DeviceZone:
     def supports_special_status(self) -> bool:
         """Gets if the zone supports special status"""
         return self.sensor_mode != ZoneSensor.EXTERNAL
-    
+
     @property
     def eco(self) -> TemperatureModifiers:
         """Gets the eco temperature modifiers for the zone"""
         return self.temperature_modifiers[SpecialStatus.ECO]
-    
+
     @property
     def comfort(self) -> TemperatureModifiers:
         """Gets the confort temperature modifiers for the zone"""
         return self.temperature_modifiers[SpecialStatus.COMFORT]
-    
+
     @property
     def temperature_modifiers(self) -> dict[SpecialStatus, TemperatureModifiers]:
         """Gets the temperature modifiers for the zone"""
@@ -415,30 +521,19 @@ class Tank(ABC):
         """Sets the target temperature of the tank if supported"""
 
     @abstractmethod
-    async def __set_operation_status__(
-        self, status: OperationStatus, device_status: OperationStatus
-    ) -> None:
+    async def __set_operation_status__(self, status: OperationStatus) -> None:
         """Set the operation status of the device"""
 
     async def turn_off(self) -> None:
         """Turn off the tank"""
         if self.operation_status == OperationStatus.ON:
-            # Check if device has any active zones
-            device_status = (
-                OperationStatus.ON
-                if any(
-                    zone.operation_status == OperationStatus.ON
-                    for zone in self._device.zones.values()
-                )
-                else OperationStatus.OFF
-            )
-            await self.__set_operation_status__(OperationStatus.OFF, device_status)
+            await self.__set_operation_status__(OperationStatus.OFF)
 
     async def turn_on(self) -> None:
         """Turn on the tank"""
         if self.operation_status == OperationStatus.OFF:
             # Check if device has any active zones
-            await self.__set_operation_status__(OperationStatus.ON, OperationStatus.ON)
+            await self.__set_operation_status__(OperationStatus.ON)
 
 
 class Device(ABC):
@@ -447,14 +542,17 @@ class Device(ABC):
     _zones: dict[int, DeviceZone] = {}
 
     def __init__(self, info: DeviceInfo, status: DeviceStatus) -> None:
-        self._info = info
+        self._info = info  # Store the DeviceInfo object
         self._status = status
+        self.manufacturer = (
+            PANASONIC  # This can remain a direct assignment if it's constant
+        )
         self._tank: Tank | None = None
         self._consumption: dict[datetime, Consumption] = LimitedSizeDict(5)
-        self.__build_zones__()
+        self.__build_zones__(info.zones)  # Use info.zones directly
 
-    def __build_zones__(self) -> None:
-        for zone in self._info.zones:
+    def __build_zones__(self, zones_info: list[DeviceZoneInfo]) -> None:
+        for zone in zones_info:
             zone_id = zone.zone_id
             # pylint: disable=cell-var-from-loop
             zone_status = next(
@@ -467,34 +565,9 @@ class Device(ABC):
         """Refresh device data"""
 
     @property
-    def device_id(self) -> str:
-        """The device id"""
-        return self._info.device_id
-
-    @property
-    def long_id(self) -> str:
-        """The long id of the device"""
-        return self._info.long_id
-
-    @property
-    def name(self) -> str:
-        """The name of the device"""
-        return self._info.name
-
-    @property
     def mode(self) -> ExtendedOperationMode:
         """The operation mode of the device"""
         return self._status.operation_mode
-
-    @property
-    def version(self) -> str:
-        """The firmware version of the device"""
-        return self._info.firmware_version
-
-    @property
-    def manufacturer(self) -> str:
-        """The manufacturer of the device"""
-        return PANASONIC
 
     @property
     def temperature_outdoor(self) -> int:
@@ -515,6 +588,26 @@ class Device(ABC):
     def operation_status(self) -> OperationStatus:
         """The operation status of the device"""
         return self._status.operation_status
+
+    @property
+    def device_id(self) -> str:
+        return self._info.device_id
+
+    @property
+    def long_id(self) -> str:
+        return self._info.long_id
+
+    @property
+    def device_name(self) -> str:
+        return self._info.name
+
+    @property
+    def firmware_version(self) -> str:
+        return self._info.firmware_version
+
+    @property
+    def model(self) -> str:
+        return self._info.model
 
     @property
     def has_tank(self) -> bool:
@@ -614,7 +707,7 @@ class Device(ABC):
     def support_special_status(self) -> bool:
         """True if the device supports special status"""
         return any(zone.supports_special_status for zone in self.zones.values())
-    
+
     async def set_special_status(self, special_status: SpecialStatus | None) -> None:
         """Set the special status.
         :param special_status: Special status to set
@@ -634,12 +727,16 @@ class Device(ABC):
         await self.__set_special_status__(special_status, zones)
 
     @abstractmethod
-    async def __set_special_status__(special_status: SpecialStatus | None, zones: list[ZoneTemperatureSetUpdate]) -> None:
+    async def __set_special_status__(
+        self,
+        special_status: SpecialStatus | None,
+        zones: list[ZoneTemperatureSetUpdate],
+    ) -> None:
         """Set the special status.
         :param special_status: Special status to set
         :param zones: Zones to set the special status for
         """
-            
+
     def __calculate_zone_special_status_update__(
         self, zone: DeviceZone, special_status: SpecialStatus | None
     ) -> ZoneTemperatureSetUpdate:
@@ -656,17 +753,32 @@ class Device(ABC):
         """If the zone is already on a special status, we need to revert the temperature to normal first"""
         if current_status is not None:
             modifiers = zone.temperature_modifiers[current_status]
-            cool_set = limit_range(cool_set - modifiers.cool, zone.cool_min, zone.cool_max) if cool_set is not None else None
-            heat_set = limit_range(heat_set - modifiers.heat, zone.heat_min, zone.heat_max) if heat_set is not None else None
-        
+            cool_set = (
+                limit_range(cool_set - modifiers.cool, zone.cool_min, zone.cool_max)
+                if cool_set is not None
+                else None
+            )
+            heat_set = (
+                limit_range(heat_set - modifiers.heat, zone.heat_min, zone.heat_max)
+                if heat_set is not None
+                else None
+            )
+
         """If we're setting a special status, we need to apply the modifiers"""
         if special_status is not None:
             modifiers = zone.temperature_modifiers[special_status]
-            cool_set = limit_range(cool_set + modifiers.cool, zone.cool_min, zone.cool_max) if cool_set is not None else None
-            heat_set = limit_range(heat_set + modifiers.heat, zone.heat_min, zone.heat_max) if heat_set is not None else None
-        
+            cool_set = (
+                limit_range(cool_set + modifiers.cool, zone.cool_min, zone.cool_max)
+                if cool_set is not None
+                else None
+            )
+            heat_set = (
+                limit_range(heat_set + modifiers.heat, zone.heat_min, zone.heat_max)
+                if heat_set is not None
+                else None
+            )
+
         return ZoneTemperatureSetUpdate(zone.zone_id, cool_set, heat_set)
- 
 
     @abstractmethod
     async def __set_operation_status__(self, status: OperationStatus) -> None:
