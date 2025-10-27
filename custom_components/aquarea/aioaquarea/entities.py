@@ -190,7 +190,7 @@ class DeviceImpl(Device):
         tank_off = (
             not self.has_tank
             or self.has_tank
-            (self.tank is None or self.tank.operation_status == OperationStatus.OFF)
+            and (self.tank is None or self.tank.operation_status == OperationStatus.OFF)
         )
 
         operation_status = (
