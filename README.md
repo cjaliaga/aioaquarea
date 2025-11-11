@@ -10,6 +10,7 @@ This library requires:
 - Python >= 3.9
 - asyncio
 - aiohttp
+- strenum
 
 ## Usage
 The library supports the production environment of the Panasonic Aquarea Smart Cloud API and also the Demo environment. One of the main usages of this library is to integrate the Panasonic Aquarea Smart Cloud API with Home Assistant via [home-assistant-aquarea](https://github.com/cjaliaga/home-assistant-aquarea)
