@@ -80,9 +80,9 @@ class DeviceManager:
                             operation_mode = OperationMode(
                                 device_raw.get("operationMode", 0)
                             )  # Default to 0 if not found
-                            has_tank = (
-                                "tankStatus" in device_raw
-                            )  # Check for presence of tankStatus key
+                            # Check if tankStatus exists, is not None, and is not an empty dict
+                            tank_status = device_raw.get("tankStatus")
+                            has_tank = bool(tank_status and tank_status != {})
                             firmware_version = (
                                 "N/A"  # Mock data as it's not in the new structure
                             )
@@ -200,28 +200,32 @@ class DeviceManager:
             operation_status=OperationStatus(device.get("specialStatus")),
             device_status=DeviceModeStatus(device.get("deiceStatus")),
             temperature_outdoor=device.get("outdoorNow"),
-            operation_mode=ExtendedOperationMode.OFF
-            if operation_mode_value == 99
-            else ExtendedOperationMode(operation_mode_value),
+            operation_mode=(
+                ExtendedOperationMode.OFF
+                if operation_mode_value == 99
+                else ExtendedOperationMode(operation_mode_value)
+            ),
             fault_status=[
                 FaultError(fault_status["errorMessage"], fault_status["errorCode"])
                 for fault_status in device.get("faultStatus", [])
             ],
             direction=DeviceDirection(device.get("direction")),
             pump_duty=PumpDuty(device.get("pumpDuty")),
-            tank_status=[
-                TankStatus(
-                    OperationStatus(
-                        device.get("tankStatus", {}).get("operationStatus")
-                    ),
-                    device.get("tankStatus", {}).get("temperatureNow"),
-                    device.get("tankStatus", {}).get("heatMax"),
-                    device.get("tankStatus", {}).get("heatMin"),
-                    device.get("tankStatus", {}).get("heatSet"),
-                )
-            ]
-            if device.get("tankStatus")
-            else [],
+            tank_status=(
+                [
+                    TankStatus(
+                        OperationStatus(
+                            device.get("tankStatus", {}).get("operationStatus")
+                        ),
+                        device.get("tankStatus", {}).get("temperatureNow"),
+                        device.get("tankStatus", {}).get("heatMax"),
+                        device.get("tankStatus", {}).get("heatMin"),
+                        device.get("tankStatus", {}).get("heatSet"),
+                    )
+                ]
+                if device.get("tankStatus")
+                else []
+            ),
             zones=[
                 DeviceZoneStatus(
                     zone_id=zone_status.get("zoneId"),
