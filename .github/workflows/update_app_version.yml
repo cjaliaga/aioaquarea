@@ -27,7 +27,7 @@ jobs:
       - name: Update const.py
         run: |
           # Der Pfad muss exakt zu deinem Fork passen
-          FILE_PATH="custom_components/aquarea/aioaquarea/const.py"
+          FILE_PATH="aioaquarea/const.py"
           NEW_VER="${{ steps.apple_api.outputs.version }}"
           
           # Linux sed Syntax (funktioniert auf GitHub Actions)
