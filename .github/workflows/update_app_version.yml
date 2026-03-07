@@ -1,0 +1,58 @@
+name: Update Panasonic Aquarea Version
+
+on:
+  schedule:
+    - cron: '0 4 * * *'
+  workflow_dispatch:
+
+jobs:
+  update-version:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Get Latest Version from Apple
+        id: apple_api
+        run: |
+          # Holt die Version über die iTunes ID der Panasonic App
+          VERSION=$(curl -s "https://itunes.apple.com/lookup?id=1348640525" | jq -r '.results[0].version')
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "Gefundene Version: $VERSION"
+
+      - name: Update const.py
+        run: |
+          # Der Pfad muss exakt zu deinem Fork passen
+          FILE_PATH="custom_components/aquarea/aioaquarea/const.py"
+          NEW_VER="${{ steps.apple_api.outputs.version }}"
+          
+          # Linux sed Syntax (funktioniert auf GitHub Actions)
+          sed -i "s/APP_VERSION = \".*\"/APP_VERSION = \"$NEW_VER\"/" "$FILE_PATH"
+
+      - name: Check for changes
+        id: check_changes
+        run: |
+          # Prüft, ob sed die Datei wirklich verändert hat
+          if git diff --exit-code; then
+            echo "changed=false" >> $GITHUB_OUTPUT
+          else
+            echo "changed=true" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Create Pull Request or Commit
+        if: steps.check_changes.outputs.changed == 'true'
+        uses: peter-evans/create-pull-request@v5
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          commit-message: "chore: update panasonic version to ${{ steps.apple_api.outputs.version }}"
+          title: "Automatisches Update: Panasonic Version ${{ steps.apple_api.outputs.version }}"
+          body: |
+            Die Apple iTunes API hat eine neue Version für die Panasonic App gemeldet.
+            Neue Version: **${{ steps.apple_api.outputs.version }}**
+            Dieses Update wurde automatisch erstellt.
+          branch: "auto-update-panasonic-version"
+          delete-branch: true
