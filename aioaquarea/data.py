@@ -233,6 +233,82 @@ class SpecialStatus(IntEnum):
     COMFORT = 2
 
 
+class DayOfWeek(IntEnum):
+    """Day of week for weekly timer"""
+
+    MONDAY = 1
+    TUESDAY = 2
+    WEDNESDAY = 3
+    THURSDAY = 4
+    FRIDAY = 5
+    SATURDAY = 6
+    SUNDAY = 7
+
+
+@dataclass
+class WeeklyTimerSlot:
+    """A single time slot in the weekly timer schedule"""
+
+    zone_id: int
+    start_hour: int
+    start_minute: int
+    end_hour: int
+    end_minute: int
+    heat_set: int | None = None
+    cool_set: int | None = None
+    enabled: bool = True
+
+
+@dataclass
+class DaySchedule:
+    """Schedule for a single day"""
+
+    day: DayOfWeek
+    slots: list[WeeklyTimerSlot]
+
+
+@dataclass
+class WeeklyTimerSettings:
+    """Weekly timer settings for a device"""
+
+    enabled: bool
+    schedule: list[DaySchedule]
+
+    def get_next_scheduled_action(self) -> tuple[DayOfWeek, WeeklyTimerSlot] | None:
+        """Find the next upcoming scheduled action based on current time.
+
+        :return: Tuple of (day, slot) for the next action, or None if no schedule
+        """
+        from datetime import datetime
+
+        now = datetime.now()
+        current_day = now.isoweekday()
+        current_minutes = now.hour * 60 + now.minute
+
+        for hours_offset in range(7 * 24 * 60):
+            check_minutes = (current_minutes + hours_offset) % (24 * 60)
+            check_day_value = ((current_day - 1 + (current_minutes + hours_offset) // (24 * 60))) % 7 + 1
+
+            try:
+                check_day = DayOfWeek(check_day_value)
+            except ValueError:
+                continue
+
+            for day_schedule in self.schedule:
+                if day_schedule.day != check_day:
+                    continue
+                for slot in day_schedule.slots:
+                    if not slot.enabled:
+                        continue
+                    slot_minutes = slot.start_hour * 60 + slot.start_minute
+                    if hours_offset == 0 and slot_minutes < current_minutes:
+                        continue
+                    if slot_minutes == check_minutes:
+                        return (check_day, slot)
+
+        return None
+
+
 @dataclass
 class TemperatureModifiers:
     heat: int | None
@@ -870,4 +946,15 @@ class Device(ABC):
         """Set the powerful time.
 
         :param powerful_time: Time to enable powerful mode
+        """
+
+    @abstractmethod
+    async def get_weekly_timer(self) -> "WeeklyTimerSettings | None":
+        """Get the weekly timer schedule."""
+
+    @abstractmethod
+    async def set_weekly_timer(self, settings: "WeeklyTimerSettings") -> None:
+        """Set the weekly timer schedule.
+
+        :param settings: The weekly timer settings to apply
         """
