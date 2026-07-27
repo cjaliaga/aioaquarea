@@ -311,6 +311,8 @@ class DeviceStatus:
     ----------
     special_status : SpecialStatus  | None
         Current special status of the device. As of now it only supports one value at a time.
+    water_pressure : float | None
+        Water pressure in bar (L-series models only).
     """
 
     long_id: str
@@ -329,6 +331,7 @@ class DeviceStatus:
     holiday_timer: HolidayTimer
     powerful_time: PowerfulTime
     special_status: SpecialStatus | None
+    water_pressure: float | None = None
 
 
 @dataclass
@@ -552,9 +555,24 @@ class Device(ABC):
         self.__build_zones__(info.zones)  # Use info.zones directly
 
     def __build_zones__(self, zones_info: list[DeviceZoneInfo]) -> None:
+        if not zones_info:
+            default_zone = DeviceZoneInfo(
+                zone_id=1,
+                name="Zone 1",
+                type="Room",
+                cool_mode=False,
+                zone_sensor=ZoneSensor.INTERNAL,
+                heat_sensor=SensorMode.DIRECT,
+                cool_sensor=None,
+            )
+            zone_status = next(
+                (z for z in self._status.zones if z.zone_id == 1), None
+            )
+            self._zones[1] = DeviceZone(default_zone, zone_status)
+            return
+
         for zone in zones_info:
             zone_id = zone.zone_id
-            # pylint: disable=cell-var-from-loop
             zone_status = next(
                 filter(lambda z: z.zone_id == zone_id, self._status.zones), None
             )
@@ -697,6 +715,11 @@ class Device(ABC):
     def special_status(self) -> SpecialStatus | None:
         """Specifies if the device is in a special status"""
         return self._status.special_status
+
+    @property
+    def water_pressure(self) -> float | None:
+        """Water pressure in bar (L-series models only)."""
+        return self._status.water_pressure
 
     def support_cooling(self, zone_id: int = 1) -> bool:
         """True if the device supports cooling in the given zone"""
