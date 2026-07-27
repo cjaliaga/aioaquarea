@@ -12,7 +12,7 @@ This library requires:
 - aiohttp
 
 ## Usage
-The library supports the production environment of the Panasonic Aquarea Smart Cloud API and also the Demo environment. One of the main usages of this library is to integrate the Panasonic Aquarea Smart Cloud API with Home Assistant via [home-assistant-aquarea](https://github.com/cjaliaga/home-assistant-aquarea)
+The library supports the production environment of the Panasonic Aquarea Smart Cloud API and also the Demo environment. One of the main usages of this library is to integrate the Panasonic Aquarea Smart Cloud API with Home Assistant via [home-assistant-aquarea](https://github.com/cjaliaga/home-assistant-aquarea). This repo is a Python library, not a HACS custom component — to install the HA integration, add `https://github.com/cjaliaga/home-assistant-aquarea` to HACS instead.
 
 Here is a simple example of how to use the library via getting a device object to interact with it:
 
