@@ -195,9 +195,12 @@ class DeviceManager:
         device = json_response.get("status")
         operation_mode_value = device.get("operationMode")
 
+        raw_operation_status = device.get("operationStatus")
+        if raw_operation_status is None:
+            raw_operation_status = device.get("specialStatus", 0)
         device_status = DeviceStatus(
             long_id=device_info.device_id,  # Use device_info.long_id here
-            operation_status=OperationStatus(device.get("specialStatus")),
+            operation_status=OperationStatus(raw_operation_status),
             device_status=DeviceModeStatus(device.get("deiceStatus")),
             temperature_outdoor=device.get("outdoorNow"),
             operation_mode=(
