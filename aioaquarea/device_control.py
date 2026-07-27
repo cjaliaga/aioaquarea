@@ -30,8 +30,8 @@ class AquareaDeviceControl:
 
     async def post_device_operation_status(
         self, long_device_id: str, new_operation_status: OperationStatus
-    ) -> None:
-        """Post device operation status."""
+    ) -> dict | None:
+        """Post device operation status and return the API response."""
         data = {
             "status": [
                 {
@@ -41,7 +41,7 @@ class AquareaDeviceControl:
             ]
         }
 
-        await self._api_client.request(
+        response = await self._api_client.request(
             "POST",
             f"{AQUAREA_SERVICE_DEVICES}/{long_device_id}",
             headers=PanasonicRequestHeader.get_aqua_headers(
@@ -50,11 +50,21 @@ class AquareaDeviceControl:
             ),
             json=data,
         )
+        if response.content_type == "application/json":
+            return await response.json()
+        return None
+
+    async def _request_json(self, **kwargs) -> dict | None:
+        """Make a request and return JSON response if available."""
+        response = await self._api_client.request(**kwargs)
+        if response.content_type == "application/json":
+            return await response.json()
+        return None
 
     async def post_device_tank_temperature(
         self, long_device_id: str, new_temperature: int
-    ) -> None:
-        """Post device tank temperature."""
+    ) -> dict | None:
+        """Post device tank temperature and return the API response."""
         data = {
             "apiName": "/remote/v1/api/devices",
             "requestMethod": "POST",
@@ -66,9 +76,9 @@ class AquareaDeviceControl:
             },
         }
 
-        await self._api_client.request(
+        return await self._request_json(
             "POST",
-            url="remote/v1/app/common/transfer",  # Specific URL for transfer API
+            url="remote/v1/app/common/transfer",
             json=data,
             throw_on_error=True,
         )
@@ -78,8 +88,8 @@ class AquareaDeviceControl:
         long_device_id: str,
         new_operation_status: OperationStatus,
         zones: list[DeviceZoneStatus],
-    ) -> None:
-        """Post device tank operation status."""
+    ) -> dict | None:
+        """Post device tank operation status and return the API response."""
         zone_status_list = []
         for zone in zones:
             zone_status_list.append(
@@ -99,9 +109,9 @@ class AquareaDeviceControl:
             },
         }
 
-        await self._api_client.request(
+        return await self._request_json(
             "POST",
-            url="remote/v1/app/common/transfer",  # Specific URL for transfer API
+            url="remote/v1/app/common/transfer",
             json=data,
             throw_on_error=True,
         )
@@ -114,10 +124,9 @@ class AquareaDeviceControl:
         operation_status: OperationStatus,
         tank_operation_status: OperationStatus,
         zone_temperature_updates: list[ZoneTemperatureSetUpdate]
-        | None = None,  # New parameter
-    ) -> None:
-        """Post device operation update."""
-        # Construct zoneStatus list based on provided zones and optional temperature updates
+        | None = None,
+    ) -> dict | None:
+        """Post device operation update and return the API response."""
         zone_status_list = []
         for zone_id, op_status in zones.items():
             zone_data = {
@@ -146,9 +155,9 @@ class AquareaDeviceControl:
             },
         }
 
-        await self._api_client.request(
+        return await self._request_json(
             "POST",
-            url="remote/v1/app/common/transfer",  # Specific URL for transfer API
+            url="remote/v1/app/common/transfer",
             json=data,
             throw_on_error=True,
         )
@@ -158,8 +167,8 @@ class AquareaDeviceControl:
         long_id: str,
         special_status: SpecialStatus | None,
         zones: list[ZoneTemperatureSetUpdate],
-    ) -> None:
-        """Post device operation update."""
+    ) -> dict | None:
+        """Post device operation update and return the API response."""
         data = {
             "status": [
                 {
@@ -181,7 +190,7 @@ class AquareaDeviceControl:
             ]
         }
 
-        await self._api_client.request(
+        response = await self._api_client.request(
             "POST",
             f"{AQUAREA_SERVICE_DEVICES}/{long_id}",
             headers=PanasonicRequestHeader.get_aqua_headers(
@@ -190,27 +199,30 @@ class AquareaDeviceControl:
             ),
             json=data,
         )
+        if response.content_type == "application/json":
+            return await response.json()
+        return None
 
     async def post_device_zone_heat_temperature(
         self, long_id: str, zone_id: int, temperature: int
-    ) -> None:
-        """Post device zone heat temperature."""
+    ) -> dict | None:
+        """Post device zone heat temperature and return the API response."""
         return await self._post_device_zone_temperature(
             long_id, zone_id, temperature, "heatSet"
         )
 
     async def post_device_zone_cool_temperature(
         self, long_id: str, zone_id: int, temperature: int
-    ) -> None:
-        """Post device zone cool temperature."""
+    ) -> dict | None:
+        """Post device zone cool temperature and return the API response."""
         return await self._post_device_zone_temperature(
             long_id, zone_id, temperature, "coolSet"
         )
 
     async def _post_device_zone_temperature(
         self, long_id: str, zone_id: int, temperature: int, key: str
-    ) -> None:
-        """Post device zone temperature."""
+    ) -> dict | None:
+        """Post device zone temperature and return the API response."""
         data = {
             "apiName": "/remote/v1/api/devices",
             "requestMethod": "POST",
@@ -231,31 +243,34 @@ class AquareaDeviceControl:
             headers={},
             json=data,
         )
+        if response.content_type == "application/json":
+            return await response.json()
+        return None
 
-    async def post_device_set_quiet_mode(self, long_id: str, mode: QuietMode) -> None:
-        """Post quiet mode."""
+    async def post_device_set_quiet_mode(self, long_id: str, mode: QuietMode) -> dict | None:
+        """Post quiet mode and return the API response."""
         data = {
             "apiName": "/remote/v1/api/devices",
             "requestMethod": "POST",
             "bodyParam": {"gwid": long_id, "quietMode": mode.value},
         }
 
-        await self._api_client.request(
+        return await self._request_json(
             "POST",
             "remote/v1/app/common/transfer",
             json=data,
             throw_on_error=True,
         )
 
-    async def post_device_force_dhw(self, long_id: str, force_dhw: ForceDHW) -> None:
-        """Post force DHW command."""
+    async def post_device_force_dhw(self, long_id: str, force_dhw: ForceDHW) -> dict | None:
+        """Post force DHW command and return the API response."""
         data = {
             "apiName": "/remote/v1/api/devices",
             "requestMethod": "POST",
             "bodyParam": {"gwid": long_id, "forceDHW": force_dhw.value},
         }
 
-        await self._api_client.request(
+        return await self._request_json(
             "POST",
             "remote/v1/app/common/transfer",
             json=data,
@@ -264,15 +279,15 @@ class AquareaDeviceControl:
 
     async def post_device_force_heater(
         self, long_id: str, force_heater: ForceHeater
-    ) -> None:
-        """Post force heater command."""
+    ) -> dict | None:
+        """Post force heater command and return the API response."""
         data = {
             "apiName": "/remote/v1/api/devices",
             "requestMethod": "POST",
             "bodyParam": {"gwid": long_id, "forceHeater": force_heater.value},
         }
 
-        await self._api_client.request(
+        return await self._request_json(
             "POST",
             "remote/v1/app/common/transfer",
             json=data,
@@ -281,30 +296,30 @@ class AquareaDeviceControl:
 
     async def post_device_holiday_timer(
         self, long_id: str, holiday_timer: HolidayTimer
-    ) -> None:
-        """Post holidayTimer command."""
+    ) -> dict | None:
+        """Post holidayTimer command and return the API response."""
         data = {
             "apiName": "/remote/v1/api/devices",
             "requestMethod": "POST",
             "bodyParam": {"gwid": long_id, "holidayTimer": holiday_timer.value},
         }
 
-        await self._api_client.request(
+        return await self._request_json(
             "POST",
             "remote/v1/app/common/transfer",
             json=data,
             throw_on_error=True,
         )
 
-    async def post_device_request_defrost(self, long_id: str) -> None:
-        """Post forcedefrost command."""
+    async def post_device_request_defrost(self, long_id: str) -> dict | None:
+        """Post forcedefrost command and return the API response."""
         data = {
             "apiName": "/remote/v1/api/devices",
             "requestMethod": "POST",
             "bodyParam": {"gwid": long_id, "forcedefrost": 1},
         }
 
-        await self._api_client.request(
+        return await self._request_json(
             "POST",
             "remote/v1/app/common/transfer",
             json=data,
@@ -313,15 +328,15 @@ class AquareaDeviceControl:
 
     async def post_device_set_powerful_time(
         self, long_id: str, powerful_time: PowerfulTime
-    ) -> None:
-        """Post powerful time."""
+    ) -> dict | None:
+        """Post powerful time and return the API response."""
         data = {
             "apiName": "/remote/v1/api/devices",
             "requestMethod": "POST",
             "bodyParam": {"gwid": long_id, "powerfulRequest": powerful_time.value},
         }
 
-        await self._api_client.request(
+        return await self._request_json(
             "POST",
             "remote/v1/app/common/transfer",
             json=data,
