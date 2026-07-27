@@ -22,6 +22,7 @@ from .data import (
     Tank,
     TankStatus,
     UpdateOperationMode,
+    WeeklyTimerSettings,
     ZoneTemperatureSetUpdate,
 )
 from .errors import DataNotAvailableError
@@ -375,6 +376,19 @@ class DeviceImpl(Device):
             await self._client.post_device_set_powerful_time(
                 self.long_id, powerful_time
             )
+
+    async def get_weekly_timer(self) -> WeeklyTimerSettings | None:
+        """Get the weekly timer schedule."""
+        return await self._client.get_device_weekly_timer(self._info.device_id)
+
+    async def set_weekly_timer(self, settings: WeeklyTimerSettings) -> None:
+        """Set the weekly timer schedule.
+
+        :param settings: The weekly timer settings to apply
+        """
+        await self._client.set_device_weekly_timer(
+            self._info.device_id, settings
+        )
 
     async def __set_special_status__(
         self,

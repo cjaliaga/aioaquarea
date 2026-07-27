@@ -26,6 +26,7 @@ from .data import (
     QuietMode,
     SpecialStatus,
     UpdateOperationMode,
+    WeeklyTimerSettings,
     ZoneTemperatureSetUpdate,
 )
 from .decorators import auth_required
@@ -33,6 +34,7 @@ from .device_control import AquareaDeviceControl
 from .device_manager import DeviceManager
 from .entities import DeviceImpl
 from .statistics import Consumption, DateType
+from .weekly_timer_manager import WeeklyTimerManager
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -109,6 +111,9 @@ class AquareaClient:  # Renamed Client to AquareaClient
         self._consumption_manager = AquareaConsumptionManager(
             self._api_client, self._base_url, dt.timezone.utc
         )  # Pass timezone
+        self._weekly_timer_manager = WeeklyTimerManager(
+            self._api_client, self._base_url
+        )
         self._settings.username = username
         self._settings.password = password
         self._settings.access_token = self._api_client.access_token
@@ -373,6 +378,30 @@ class AquareaClient:  # Renamed Client to AquareaClient
         """Get device consumption."""
         return await self._consumption_manager.get_device_consumption(
             long_id, aggregation, date_input
+        )
+
+    @auth_required
+    async def get_device_weekly_timer(
+        self, device_id: str
+    ) -> WeeklyTimerSettings | None:
+        """Get the weekly timer schedule for a device.
+
+        :param device_id: The device GUID
+        :return: WeeklyTimerSettings if available, None otherwise
+        """
+        return await self._weekly_timer_manager.get_weekly_timer(device_id)
+
+    @auth_required
+    async def set_device_weekly_timer(
+        self, device_id: str, settings: WeeklyTimerSettings
+    ) -> None:
+        """Set the weekly timer schedule for a device.
+
+        :param device_id: The device GUID
+        :param settings: The weekly timer settings to apply
+        """
+        return await self._weekly_timer_manager.set_weekly_timer(
+            device_id, settings
         )
 
     async def close(self) -> None:

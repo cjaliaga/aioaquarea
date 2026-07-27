@@ -233,6 +233,48 @@ class SpecialStatus(IntEnum):
     COMFORT = 2
 
 
+class DayOfWeek(IntEnum):
+    """Day of week for weekly timer"""
+
+    MONDAY = 1
+    TUESDAY = 2
+    WEDNESDAY = 3
+    THURSDAY = 4
+    FRIDAY = 5
+    SATURDAY = 6
+    SUNDAY = 7
+
+
+@dataclass
+class WeeklyTimerSlot:
+    """A single time slot in the weekly timer schedule"""
+
+    zone_id: int
+    start_hour: int
+    start_minute: int
+    end_hour: int
+    end_minute: int
+    heat_set: int | None = None
+    cool_set: int | None = None
+    enabled: bool = True
+
+
+@dataclass
+class DaySchedule:
+    """Schedule for a single day"""
+
+    day: DayOfWeek
+    slots: list[WeeklyTimerSlot]
+
+
+@dataclass
+class WeeklyTimerSettings:
+    """Weekly timer settings for a device"""
+
+    enabled: bool
+    schedule: list[DaySchedule]
+
+
 @dataclass
 class TemperatureModifiers:
     heat: int | None
@@ -870,4 +912,15 @@ class Device(ABC):
         """Set the powerful time.
 
         :param powerful_time: Time to enable powerful mode
+        """
+
+    @abstractmethod
+    async def get_weekly_timer(self) -> WeeklyTimerSettings | None:
+        """Get the weekly timer schedule."""
+
+    @abstractmethod
+    async def set_weekly_timer(self, settings: WeeklyTimerSettings) -> None:
+        """Set the weekly timer schedule.
+
+        :param settings: The weekly timer settings to apply
         """
