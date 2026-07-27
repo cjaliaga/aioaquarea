@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import math
+
 try:
     from enum import StrEnum
 except ImportError:
@@ -34,19 +36,36 @@ class ConsumptionType(StrEnum):
     TOTAL = "Consume"
 
 
+def _sanitize_float(value: object) -> float | None:
+    """Convert a value to float, handling NaN, None, and invalid values.
+
+    :param value: The raw value from the API
+    :return: float value or None if invalid
+    """
+    if value is None:
+        return None
+    try:
+        result = float(value)
+        if math.isnan(result) or math.isinf(result):
+            return None
+        return result
+    except (ValueError, TypeError):
+        return None
+
+
 class Consumption:
     """Consumption"""
 
     def __init__(self, data: dict[str, object]):
         self._data = data
-        self._heat_consumption = data.get("heatConsumption")
-        self._cool_consumption = data.get("coolConsumption")
-        self._tank_consumption = data.get("tankConsumption")
-        self._heat_cost = data.get("heatCost")
-        self._cool_cost = data.get("coolCost")
-        self._tank_cost = data.get("tankCost")
+        self._heat_consumption = _sanitize_float(data.get("heatConsumption"))
+        self._cool_consumption = _sanitize_float(data.get("coolConsumption"))
+        self._tank_consumption = _sanitize_float(data.get("tankConsumption"))
+        self._heat_cost = _sanitize_float(data.get("heatCost"))
+        self._cool_cost = _sanitize_float(data.get("coolCost"))
+        self._tank_cost = _sanitize_float(data.get("tankCost"))
         self._data_time = data.get("dataTime")
-        self._outdoor_temp = data.get("outdoorTemp")
+        self._outdoor_temp = _sanitize_float(data.get("outdoorTemp"))
 
     @property
     def heat_consumption(self) -> float | None:
@@ -90,15 +109,19 @@ class Consumption:
 
     @property
     def total_consumption(self) -> float | None:
-        """Total consumption in kWh (sum of heat, cool, and tank consumption)"""
-        total = 0.0
-        if self._heat_consumption is not None:
-            total += self._heat_consumption
-        if self._cool_consumption is not None:
-            total += self._cool_consumption
-        if self._tank_consumption is not None:
-            total += self._tank_consumption
-        return total if total > 0 else None
+        """Total consumption in kWh (sum of heat, cool, and tank consumption).
+
+        Returns None only if all components are None (no data available).
+        Returns 0 if all components are 0 (valid reading of zero consumption).
+        """
+        components = [
+            self._heat_consumption,
+            self._cool_consumption,
+            self._tank_consumption,
+        ]
+        if all(c is None for c in components):
+            return None
+        return sum(c for c in components if c is not None)
 
     @property
     def raw_data(self) -> dict[str, object]:
