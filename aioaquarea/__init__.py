@@ -7,6 +7,8 @@ from typing import Tuple
 from .const import AquareaEnvironment
 from .core import AquareaClient as Client  # Import AquareaClient and alias it as Client
 from .data import (
+    DayOfWeek,
+    DaySchedule,
     Device,
     DeviceAction,
     DeviceDirection,
@@ -24,6 +26,8 @@ from .data import (
     SpecialStatus,
     Tank,
     UpdateOperationMode,
+    WeeklyTimerSettings,
+    WeeklyTimerSlot,
 )
 from .errors import (
     ApiError,
@@ -64,4 +68,8 @@ __all__: Tuple[str, ...] = (
     "PowerfulTime",
     "AquareaEnvironment",
     "SpecialStatus",
+    "DayOfWeek",
+    "DaySchedule",
+    "WeeklyTimerSettings",
+    "WeeklyTimerSlot",
 )
