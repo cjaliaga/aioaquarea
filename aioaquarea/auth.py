@@ -225,35 +225,60 @@ class Authenticator:
 
     async def authenticate(self, username: str, password: str):
         self._sess.cookie_jar.clear_domain("authglb.digital.panasonic.com")
-        # generate initial state and code_challenge
-        code_verifier = generate_random_string(43)
+        max_retries = 2
+        last_error = None
 
-        code_challenge = (
-            base64.urlsafe_b64encode(
-                hashlib.sha256(code_verifier.encode("utf-8")).digest()
-            )
-            .split("=".encode("utf-8"))[0]
-            .decode("utf-8")
-        )
+        for attempt in range(max_retries):
+            try:
+                # generate initial state and code_challenge
+                code_verifier = generate_random_string(43)
 
-        authorization_response = await self._authorize(code_challenge)
-        authorization_redirect = authorization_response.headers["Location"]
+                code_challenge = (
+                    base64.urlsafe_b64encode(
+                        hashlib.sha256(code_verifier.encode("utf-8")).digest()
+                    )
+                    .split("=".encode("utf-8"))[0]
+                    .decode("utf-8")
+                )
 
-        # check if the user can skip the authentication workflows - in that case,
-        # the location is directly pointing to the redirect url with the "code"
-        # query parameter included
-        if authorization_redirect.startswith(REDIRECT_URI):
-            code = get_querystring_parameter_from_header_entry_url(
-                authorization_response, "Location", "code"
-            )
-        else:
-            code = await self._login(authorization_response, username, password)
+                authorization_response = await self._authorize(code_challenge)
+                authorization_redirect = authorization_response.headers.get("Location")
+                if not authorization_redirect:
+                    raise AuthenticationError(
+                        AuthenticationErrorCodes.API_ERROR,
+                        "No Location header in authorization response",
+                    )
 
-        await self._request_new_token(code, code_verifier)
-        await self._retrieve_client_acc()
+                # check if the user can skip the authentication workflows - in that case,
+                # the location is directly pointing to the redirect url with the "code"
+                # query parameter included
+                if authorization_redirect.startswith(REDIRECT_URI):
+                    code = get_querystring_parameter_from_header_entry_url(
+                        authorization_response, "Location", "code"
+                    )
+                else:
+                    code = await self._login(authorization_response, username, password)
+
+                await self._request_new_token(code, code_verifier)
+                await self._retrieve_client_acc()
+                return
+            except AuthenticationError as err:
+                last_error = err
+                self._logger.warning(
+                    "Auth attempt %d/%d failed: %s. Refreshing app version and retrying...",
+                    attempt + 1, max_retries, err,
+                )
+                await self._app_version.refresh()
+
+        raise last_error  # type: ignore[misc]
 
     async def refresh_token(self):
         self._logger.debug("Refreshing token")
+        if not self._settings.refresh_token:
+            raise AuthenticationError(
+                AuthenticationErrorCodes.API_ERROR,
+                "No refresh token available, full login required",
+            )
         # do before, so that timestamp is older rather than newer
         now = dt.datetime.now()
         unix_time_token_received = time.mktime(now.timetuple())
@@ -265,9 +290,10 @@ class Authenticator:
                 "user-agent": AUTH_API_USER_AGENT,
             },
             json={
-                "scope": self._settings.scope,
+                "scope": self._settings.scope or "openid",
                 "client_id": APP_CLIENT_ID,
                 "grant_type": "refresh_token",
+                "refresh_token": self._settings.refresh_token,
             },
             allow_redirects=False,
         )
@@ -315,7 +341,12 @@ class Authenticator:
         state = get_querystring_parameter_from_header_entry_url(
             authorization_response, "Location", "state"
         )
-        location = authorization_response.headers["Location"]
+        location = authorization_response.headers.get("Location")
+        if not location:
+            raise AuthenticationError(
+                AuthenticationErrorCodes.API_ERROR,
+                "No Location header in authorization redirect",
+            )
         self._logger.debug(
             "Following authorization redirect, %s",
             json.dumps({"url": f"{BASE_PATH_AUTH}/{location}", "state": state}),
@@ -325,15 +356,29 @@ class Authenticator:
         )
         await check_response(response, "authorize_redirect", 200)
 
-        # get the "_csrf" cookie
-        csrf_cookie = response.cookies["_csrf"]
+        # get the "_csrf" cookie - this may fail if Panasonic changed the flow
+        try:
+            csrf_cookie = response.cookies["_csrf"]
+        except KeyError:
+            self._logger.error(
+                "CSRF cookie not found in response cookies. "
+                "Available cookies: %s. Response URL: %s, status: %d",
+                list(response.cookies.keys()),
+                response.url,
+                response.status,
+            )
+            raise AuthenticationError(
+                AuthenticationErrorCodes.API_ERROR,
+                "CSRF cookie not found in authorization response. "
+                "Panasonic may have changed their authentication flow.",
+            )
 
         # -------------------------------------------------------------------
         # LOGIN
         # -------------------------------------------------------------------
         self._logger.debug(
             "Authenticating with username and password, %s",
-            json.dumps({"csrf": csrf_cookie, "state": state}),
+            json.dumps({"csrf": str(csrf_cookie), "state": state}),
         )
         response = await self._sess.post(
             f"{BASE_PATH_AUTH}/usernamepassword/login",
@@ -348,7 +393,7 @@ class Authenticator:
                 "response_type": "code",
                 "scope": "openid offline_access comfortcloud.control a2w.control",
                 "audience": f"https://digital.panasonic.com/{APP_CLIENT_ID}/api/v1/",
-                "_csrf": csrf_cookie,
+                "_csrf": str(csrf_cookie),
                 "state": state,
                 "_intstate": "deprecated",
                 "username": username,
@@ -358,7 +403,19 @@ class Authenticator:
             },
             allow_redirects=False,
         )
-        await check_response(response, "login", 200)
+
+        if response.status != 200:
+            response_text = await response.text()
+            self._logger.error(
+                "Login failed with status %d: %s",
+                response.status,
+                response_text,
+            )
+            raise AuthenticationError(
+                AuthenticationErrorCodes.API_ERROR,
+                f"Login failed with status {response.status}. "
+                f"Panasonic may have changed their authentication flow.",
+            )
 
         # -------------------------------------------------------------------
         # CALLBACK
@@ -373,7 +430,21 @@ class Authenticator:
         input_lines = soup.find_all("input", {"type": "hidden"})
         parameters = dict()
         for input_line in input_lines:
-            parameters[input_line.get("name")] = input_line.get("value")
+            name = input_line.get("name")
+            value = input_line.get("value")
+            if name:
+                parameters[name] = value
+
+        if not parameters:
+            self._logger.error(
+                "No hidden input fields found in login response. "
+                "Panasonic may have changed the login form."
+            )
+            raise AuthenticationError(
+                AuthenticationErrorCodes.API_ERROR,
+                "No form parameters found in login response. "
+                "Panasonic may have changed their authentication flow.",
+            )
 
         self._logger.debug("Callback with parameters, %s", json.dumps(parameters))
         response = await self._sess.post(
@@ -385,26 +456,46 @@ class Authenticator:
             },
             allow_redirects=False,
         )
-        await check_response(response, "login_callback", 302)
+        if response.status != 302:
+            response_text = await response.text()
+            self._logger.error(
+                "Login callback failed with status %d: %s",
+                response.status,
+                response_text,
+            )
+            raise AuthenticationError(
+                AuthenticationErrorCodes.API_ERROR,
+                f"Login callback failed with status {response.status}",
+            )
 
         # ------------------------------------------------------------------
         # FOLLOW REDIRECT
         # ------------------------------------------------------------------
 
-        location = response.headers["Location"]
+        location = response.headers.get("Location")
+        if not location:
+            raise AuthenticationError(
+                AuthenticationErrorCodes.API_ERROR,
+                "No Location header in login callback response",
+            )
         self._logger.debug(
             "Callback response, %s",
-            json.dumps({"redirect": location, "html": await response.text()}),
+            json.dumps({"redirect": location}),
         )
 
         response = await self._sess.get(
             f"{BASE_PATH_AUTH}/{location}", allow_redirects=False
         )
         await check_response(response, "login_redirect", 302)
-        location = response.headers["Location"]
+        location = response.headers.get("Location")
+        if not location:
+            raise AuthenticationError(
+                AuthenticationErrorCodes.API_ERROR,
+                "No Location header in login redirect response",
+            )
         self._logger.debug(
             "Callback redirect, %s",
-            json.dumps({"redirect": location, "html": await response.text()}),
+            json.dumps({"redirect": location}),
         )
 
         return get_querystring_parameter_from_header_entry_url(
@@ -439,11 +530,20 @@ class Authenticator:
         self._set_token(token_response, unix_time_token_received)
 
     def _set_token(self, token_response, unix_time_token_received):
+        if "access_token" not in token_response:
+            raise AuthenticationError(
+                AuthenticationErrorCodes.API_ERROR,
+                f"No access_token in token response. Keys: {list(token_response.keys())}",
+            )
+        access_token = token_response["access_token"]
+        refresh_token = token_response.get("refresh_token", "")
+        expires_in = token_response.get("expires_in", 3600)
+        scope = token_response.get("scope", "openid")
         self._settings.set_token(
-            token_response["access_token"],
-            token_response["refresh_token"],
-            unix_time_token_received + token_response["expires_in"],
-            token_response["scope"],
+            access_token,
+            refresh_token,
+            unix_time_token_received + expires_in,
+            scope,
         )
 
     async def _retrieve_client_acc(self):
@@ -460,16 +560,32 @@ class Authenticator:
         if await has_new_version_been_published(response):
             self._logger.info("New version of acc client id has been published")
             await self._app_version.refresh()
+            headers = await PanasonicRequestHeader.get(
+                self._settings, self._app_version, include_client_id=False
+            )
             response = await self._sess.post(
                 f"{BASE_PATH_ACC}/auth/v2/login",
-                headers=await PanasonicRequestHeader.get(
-                    self._settings, self._app_version, include_client_id=False
-                ),
+                headers=headers,
                 json={"language": 0},
             )
 
-        await check_response(response, "get_acc_client_id", 200)
+        if response.status != 200:
+            response_text = await response.text()
+            self._logger.error(
+                "ACC login failed with status %d: %s",
+                response.status,
+                response_text,
+            )
+            raise AuthenticationError(
+                AuthenticationErrorCodes.API_ERROR,
+                f"Error in get_acc_client_id: Unexpected status code {response.status}",
+            )
 
         json_body = json.loads(await response.text())
+        if "clientId" not in json_body:
+            raise AuthenticationError(
+                AuthenticationErrorCodes.API_ERROR,
+                f"No clientId in ACC login response. Keys: {list(json_body.keys())}",
+            )
         self._settings.clientId = json_body["clientId"]
         return

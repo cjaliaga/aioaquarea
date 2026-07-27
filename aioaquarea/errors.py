@@ -61,6 +61,7 @@ class AuthenticationErrorCodes(StrEnum):
     SESSION_CLOSED = "1001-0001"
     INVALID_USERNAME_OR_PASSWORD = "1001-1401"
     INVALID_CREDENTIALS = "1000-1401"
+    LOGGED_OUT_SYSTEM_ERROR = "1000-0999"
     API_ERROR = "API_ERROR"
     TOKEN_EXPIRED = "TOKEN_EXPIRED"  # Added for token expiration
 
