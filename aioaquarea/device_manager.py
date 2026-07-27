@@ -195,10 +195,18 @@ class DeviceManager:
         device = json_response.get("status")
         operation_mode_value = device.get("operationMode")
 
+        raw_water_pressure = device.get("waterPressure")
+        if raw_water_pressure is not None:
+            try:
+                raw_water_pressure = float(raw_water_pressure)
+            except (ValueError, TypeError):
+                raw_water_pressure = None
+
         device_status = DeviceStatus(
-            long_id=device_info.device_id,  # Use device_info.long_id here
+            long_id=device_info.device_id,
             operation_status=OperationStatus(device.get("specialStatus")),
             device_status=DeviceModeStatus(device.get("deiceStatus")),
+            water_pressure=raw_water_pressure,
             temperature_outdoor=device.get("outdoorNow"),
             operation_mode=(
                 ExtendedOperationMode.OFF
