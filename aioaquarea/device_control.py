@@ -10,6 +10,7 @@ from .data import (
     ForceHeater,
     HolidayTimer,
     OperationStatus,
+    PendingDeviceUpdates,
     PowerfulTime,
     QuietMode,
     SpecialStatus,
@@ -319,6 +320,82 @@ class AquareaDeviceControl:
             "apiName": "/remote/v1/api/devices",
             "requestMethod": "POST",
             "bodyParam": {"gwid": long_id, "powerfulRequest": powerful_time.value},
+        }
+
+        await self._api_client.request(
+            "POST",
+            "remote/v1/app/common/transfer",
+            json=data,
+            throw_on_error=True,
+        )
+
+    async def post_device_batch_update(
+        self, long_id: str, updates: PendingDeviceUpdates
+    ) -> None:
+        """Post a batch of device updates in a single API call.
+
+        Merges all pending changes into one transfer API request.
+        :param long_id: The device GUID
+        :param updates: The pending updates to apply
+        """
+        body_param: dict = {"gwid": long_id}
+
+        if updates.operation_mode is not None:
+            body_param["operationMode"] = updates.operation_mode.value
+
+        if updates.operation_status is not None:
+            body_param["operationStatus"] = updates.operation_status.value
+
+        if updates.zone_updates is not None:
+            body_param["zoneStatus"] = [
+                {"zoneId": zid, "operationStatus": op.value}
+                for zid, op in updates.zone_updates.items()
+            ]
+
+        if updates.zone_temperature_updates is not None:
+            zone_status = body_param.get("zoneStatus", [])
+            existing_zones = {z["zoneId"]: z for z in zone_status}
+            for temp_update in updates.zone_temperature_updates:
+                if temp_update.zone_id in existing_zones:
+                    if temp_update.heat_set is not None:
+                        existing_zones[temp_update.zone_id]["heatSet"] = temp_update.heat_set
+                    if temp_update.cool_set is not None:
+                        existing_zones[temp_update.zone_id]["coolSet"] = temp_update.cool_set
+                else:
+                    entry = {"zoneId": temp_update.zone_id}
+                    if temp_update.heat_set is not None:
+                        entry["heatSet"] = temp_update.heat_set
+                    if temp_update.cool_set is not None:
+                        entry["coolSet"] = temp_update.cool_set
+                    zone_status.append(entry)
+            if not body_param.get("zoneStatus"):
+                body_param["zoneStatus"] = zone_status
+
+        tank_status: dict = {}
+        if updates.tank_operation_status is not None:
+            tank_status["operationStatus"] = updates.tank_operation_status.value
+        if updates.tank_temperature is not None:
+            tank_status["heatSet"] = updates.tank_temperature
+        if tank_status:
+            body_param["tankStatus"] = tank_status
+
+        if updates.quiet_mode is not None:
+            body_param["quietMode"] = updates.quiet_mode.value
+        if updates.force_dhw is not None:
+            body_param["forceDHW"] = updates.force_dhw.value
+        if updates.force_heater is not None:
+            body_param["forceHeater"] = updates.force_heater.value
+        if updates.holiday_timer is not None:
+            body_param["holidayTimer"] = updates.holiday_timer.value
+        if updates.powerful_time is not None:
+            body_param["powerfulRequest"] = updates.powerful_time.value
+        if updates.request_defrost:
+            body_param["forcedefrost"] = 1
+
+        data = {
+            "apiName": "/remote/v1/api/devices",
+            "requestMethod": "POST",
+            "bodyParam": body_param,
         }
 
         await self._api_client.request(

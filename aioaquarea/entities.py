@@ -15,6 +15,7 @@ from .data import (
     HolidayTimer,
     OperationMode,
     OperationStatus,
+    PendingDeviceUpdates,
     PowerfulTime,
     QuietMode,
     SpecialStatus,
@@ -92,7 +93,9 @@ class DeviceImpl(Device):
         self._consumption_refresh_interval = consumption_refresh_interval
         self._consumption: dict[
             dt.date, Consumption
-        ] = {}  # Initialize _consumption with dt.date as key and single Consumption object for the day
+        ] = {}
+        self._batching: bool = False
+        self._pending_updates: PendingDeviceUpdates | None = None
 
         if self.has_tank and self._status.tank_status:
             self._tank = TankImpl(self._status.tank_status[0], self, self._client)
@@ -193,7 +196,10 @@ class DeviceImpl(Device):
             self._consumption_refresh_lock.release()
 
     async def __set_operation_status__(self, status: OperationStatus) -> None:
-        await self._client.post_device_operation_status(self.long_id, status)
+        if self._batching and self._pending_updates:
+            self._pending_updates.operation_status = status
+        else:
+            await self._client.post_device_operation_status(self.long_id, status)
 
     async def set_mode(
         self, mode: UpdateOperationMode, zone_id: int | None = None
@@ -243,14 +249,20 @@ class DeviceImpl(Device):
                     )
                 )
 
-        await self._client.post_device_operation_update(
-            self.long_id,
-            mode,
-            zones,
-            operation_status,
-            tank_operation_status,
-            zone_temperature_updates,
-        )
+        if self._batching and self._pending_updates:
+            self._pending_updates.operation_mode = mode
+            self._pending_updates.zone_updates = zones
+            self._pending_updates.tank_operation_status = tank_operation_status
+            self._pending_updates.zone_temperature_updates = zone_temperature_updates
+        else:
+            await self._client.post_device_operation_update(
+                self.long_id,
+                mode,
+                zones,
+                operation_status,
+                tank_operation_status,
+                zone_temperature_updates,
+            )
 
     async def set_temperature(
         self, temperature: int, zone_id: int | None = None
@@ -268,23 +280,38 @@ class DeviceImpl(Device):
             _LOGGER.warning("Zone does not support setting temperature.")
             return
 
-        if self.mode in [ExtendedOperationMode.AUTO_COOL, ExtendedOperationMode.COOL]:
-            _LOGGER.info(
-                f"Setting cool temperature for zone {zone_id} to {temperature}"
-            )
+        zone_update = ZoneTemperatureSetUpdate(
+            zone_id=zone_id,
+            heat_set=(
+                temperature
+                if self.mode in (ExtendedOperationMode.AUTO_HEAT, ExtendedOperationMode.HEAT)
+                else None
+            ),
+            cool_set=(
+                temperature
+                if self.mode in (ExtendedOperationMode.AUTO_COOL, ExtendedOperationMode.COOL)
+                else None
+            ),
+        )
+
+        if self._batching and self._pending_updates:
+            if self._pending_updates.zone_temperature_updates is None:
+                self._pending_updates.zone_temperature_updates = []
+            self._pending_updates.zone_temperature_updates.append(zone_update)
+        elif self.mode in [ExtendedOperationMode.AUTO_COOL, ExtendedOperationMode.COOL]:
             await self._client.post_device_zone_cool_temperature(
                 self.long_id, zone_id, temperature
             )
         elif self.mode in [ExtendedOperationMode.AUTO_HEAT, ExtendedOperationMode.HEAT]:
-            _LOGGER.info(
-                f"Setting heat temperature for zone {zone_id} to {temperature}"
-            )
             await self._client.post_device_zone_heat_temperature(
                 self.long_id, zone_id, temperature
             )
 
     async def set_quiet_mode(self, mode: QuietMode) -> None:
-        await self._client.post_device_set_quiet_mode(self.long_id, mode)
+        if self._batching and self._pending_updates:
+            self._pending_updates.quiet_mode = mode
+        else:
+            await self._client.post_device_set_quiet_mode(self.long_id, mode)
 
     async def get_and_refresh_consumption(
         self, date: dt.datetime, consumption_type: ConsumptionType
@@ -343,7 +370,10 @@ class DeviceImpl(Device):
 
         :param force_dhw: Set the Force DHW mode if the device has a tank.
         """
-        await self._client.post_device_force_dhw(self.long_id, force_dhw)
+        if self._batching and self._pending_updates:
+            self._pending_updates.force_dhw = force_dhw
+        else:
+            await self._client.post_device_force_dhw(self.long_id, force_dhw)
 
     async def set_force_heater(self, force_heater: ForceHeater) -> None:
         """Set the force heater configuration.
@@ -351,12 +381,18 @@ class DeviceImpl(Device):
         :param force_heater: The force heater mode.
         """
         if self.force_heater is not force_heater:
-            await self._client.post_device_force_heater(self.long_id, force_heater)
+            if self._batching and self._pending_updates:
+                self._pending_updates.force_heater = force_heater
+            else:
+                await self._client.post_device_force_heater(self.long_id, force_heater)
 
     async def request_defrost(self) -> None:
         """Request defrost."""
         if self.device_mode_status is not DeviceModeStatus.DEFROST:
-            await self._client.post_device_request_defrost(self.long_id)
+            if self._batching and self._pending_updates:
+                self._pending_updates.request_defrost = True
+            else:
+                await self._client.post_device_request_defrost(self.long_id)
 
     async def set_holiday_timer(self, holiday_timer: HolidayTimer) -> None:
         """Enable or disable the holiday timer mode.
@@ -364,7 +400,10 @@ class DeviceImpl(Device):
         :param holiday_timer: The holiday timer option
         """
         if self.holiday_timer is not holiday_timer:
-            await self._client.post_device_holiday_timer(self.long_id, holiday_timer)
+            if self._batching and self._pending_updates:
+                self._pending_updates.holiday_timer = holiday_timer
+            else:
+                await self._client.post_device_holiday_timer(self.long_id, holiday_timer)
 
     async def set_powerful_time(self, powerful_time: PowerfulTime) -> None:
         """Set the powerful time.
@@ -372,9 +411,12 @@ class DeviceImpl(Device):
         :param powerful_time: Time to enable powerful mode
         """
         if self.powerful_time is not powerful_time:
-            await self._client.post_device_set_powerful_time(
-                self.long_id, powerful_time
-            )
+            if self._batching and self._pending_updates:
+                self._pending_updates.powerful_time = powerful_time
+            else:
+                await self._client.post_device_set_powerful_time(
+                    self.long_id, powerful_time
+                )
 
     async def __set_special_status__(
         self,
@@ -388,3 +430,34 @@ class DeviceImpl(Device):
         await self._client.post_device_set_special_status(
             self.long_id, special_status, zones
         )
+
+    def batch_update(self) -> "DeviceUpdateBatch":
+        """Create a context manager for batch updates.
+
+        Usage:
+            async with device.batch_update():
+                await device.set_mode(UpdateOperationMode.HEAT)
+                await device.set_quiet_mode(QuietMode.LEVEL1)
+        """
+        return DeviceUpdateBatch(self)
+
+
+class DeviceUpdateBatch:
+    """Context manager for batching multiple device updates into one API call."""
+
+    def __init__(self, device: DeviceImpl) -> None:
+        self._device = device
+
+    async def __aenter__(self) -> "DeviceUpdateBatch":
+        self._device._batching = True
+        self._device._pending_updates = PendingDeviceUpdates()
+        return self
+
+    async def __aexit__(self, *args: object) -> None:
+        self._device._batching = False
+        updates = self._device._pending_updates
+        self._device._pending_updates = None
+        if updates and updates.has_pending:
+            await self._device._client._post_device_batch_update(
+                self._device.long_id, updates
+            )

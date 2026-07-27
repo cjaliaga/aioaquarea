@@ -18,6 +18,7 @@ from .data import (
     ForceHeater,
     HolidayTimer,
     OperationStatus,
+    PendingDeviceUpdates,
     PowerfulTime,
     PumpDuty,
     QuietMode,
@@ -64,4 +65,5 @@ __all__: Tuple[str, ...] = (
     "PowerfulTime",
     "AquareaEnvironment",
     "SpecialStatus",
+    "PendingDeviceUpdates",
 )
