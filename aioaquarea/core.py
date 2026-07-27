@@ -22,6 +22,7 @@ from .data import (
     ForceHeater,
     HolidayTimer,
     OperationStatus,
+    PendingDeviceUpdates,
     PowerfulTime,
     QuietMode,
     SpecialStatus,
@@ -366,6 +367,16 @@ class AquareaClient:  # Renamed Client to AquareaClient
         return await self._device_control.post_device_set_powerful_time(
             long_id, powerful_time
         )
+
+    async def _post_device_batch_update(
+        self, long_id: str, updates: PendingDeviceUpdates
+    ) -> None:
+        """Post a batch of device updates in a single API call.
+
+        :param long_id: The device GUID
+        :param updates: The pending updates to apply
+        """
+        await self._device_control.post_device_batch_update(long_id, updates)
 
     async def get_device_consumption(
         self, long_id: str, aggregation: DateType, date_input: str

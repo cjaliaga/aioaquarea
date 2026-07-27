@@ -354,6 +354,44 @@ class DeviceOperationStatusUpdate:
     operationStatus: OperationStatus
 
 
+@dataclass
+class PendingDeviceUpdates:
+    """Collects pending device updates for batch operations"""
+
+    operation_mode: UpdateOperationMode | None = None
+    operation_status: OperationStatus | None = None
+    zone_updates: dict[int, OperationStatus] | None = None
+    zone_temperature_updates: list[ZoneTemperatureSetUpdate] | None = None
+    tank_operation_status: OperationStatus | None = None
+    tank_temperature: int | None = None
+    quiet_mode: QuietMode | None = None
+    force_dhw: ForceDHW | None = None
+    force_heater: ForceHeater | None = None
+    holiday_timer: HolidayTimer | None = None
+    powerful_time: PowerfulTime | None = None
+    request_defrost: bool = False
+
+    @property
+    def has_pending(self) -> bool:
+        """True if there are any pending updates"""
+        return any(
+            v is not None and v is not False
+            for v in (
+                self.operation_mode,
+                self.operation_status,
+                self.zone_updates,
+                self.zone_temperature_updates,
+                self.tank_operation_status,
+                self.tank_temperature,
+                self.quiet_mode,
+                self.force_dhw,
+                self.force_heater,
+                self.holiday_timer,
+                self.powerful_time,
+            )
+        ) or self.request_defrost
+
+
 class DeviceZone:
     """Device zone"""
 
@@ -870,4 +908,17 @@ class Device(ABC):
         """Set the powerful time.
 
         :param powerful_time: Time to enable powerful mode
+        """
+
+    @abstractmethod
+    def batch_update(self) -> "DeviceUpdateBatch":
+        """Create a context manager for batch updates.
+
+        All changes made within the context will be sent together
+        in a single API call when the context exits.
+
+        Usage:
+            async with device.batch_update():
+                await device.set_mode(UpdateOperationMode.HEAT)
+                await device.set_quiet_mode(QuietMode.LEVEL1)
         """
