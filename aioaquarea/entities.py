@@ -32,6 +32,13 @@ if TYPE_CHECKING:
 
 _LOGGER = logging.getLogger(__name__)
 
+_EXTENDED_TO_UPDATE_MODE: dict[ExtendedOperationMode, UpdateOperationMode] = {
+    ExtendedOperationMode.HEAT: UpdateOperationMode.HEAT,
+    ExtendedOperationMode.COOL: UpdateOperationMode.COOL,
+    ExtendedOperationMode.AUTO_HEAT: UpdateOperationMode.AUTO,
+    ExtendedOperationMode.AUTO_COOL: UpdateOperationMode.AUTO,
+}
+
 
 class TankImpl(Tank):
     """Tank implementation."""
@@ -230,6 +237,16 @@ class DeviceImpl(Device):
             else OperationStatus.OFF
         )
 
+        # `operationMode` is a device-wide field, not per-zone. If `mode` is
+        # OFF but at least one zone (or the tank) is staying on, we're only
+        # switching an individual zone off, not shutting the whole unit down -
+        # keep reporting the device's current heat/cool/auto mode instead of
+        # OFF. Sending OFF here while another zone is still ON desyncs the
+        # physical unit (see home-assistant-aquarea#25).
+        effective_mode = mode
+        if mode == UpdateOperationMode.OFF and operation_status == OperationStatus.ON:
+            effective_mode = _EXTENDED_TO_UPDATE_MODE.get(self.mode, mode)
+
         # Prepare zone temperature updates to be sent along with operation mode
         zone_temperature_updates: list[ZoneTemperatureSetUpdate] = []
         for zone_id, zone_obj in self.zones.items():
@@ -245,7 +262,7 @@ class DeviceImpl(Device):
 
         await self._client.post_device_operation_update(
             self.long_id,
-            mode,
+            effective_mode,
             zones,
             operation_status,
             tank_operation_status,
