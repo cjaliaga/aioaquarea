@@ -40,3 +40,6 @@ target-version = ["py39", "py310", "py311"]
 profile = "black"
 # will group `import x` and `from x import` of the same module.
 force_sort_within_sections = true
+
+[tool.setuptools.package-data]
+aioaquarea = ["py.typed"]
