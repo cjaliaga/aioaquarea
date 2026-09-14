@@ -98,7 +98,11 @@ class PanasonicRequestHeader:
                 "Access token is missing from settings.",
             )
 
-        now = dt.datetime.now()  # Use dt for datetime
+        # Use UTC: _get_api_key() parses this timestamp and stamps it as UTC
+        # (date.replace(tzinfo=timezone.utc)). Building it from local time made
+        # the signed timestamp wrong by the local UTC offset, which the API
+        # rejects on writes (TOKEN_EXPIRED) for clients not running in UTC.
+        now = dt.datetime.now(dt.timezone.utc)
         timestamp = now.strftime("%Y-%m-%d %H:%M:%S")
         api_key = PanasonicRequestHeader._get_api_key(timestamp, settings.access_token)
         _LOGGER.debug(f"Request Timestamp: {timestamp} key: {api_key}")
