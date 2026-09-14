@@ -159,36 +159,39 @@ class AquareaDeviceControl:
         special_status: SpecialStatus | None,
         zones: list[ZoneTemperatureSetUpdate],
     ) -> None:
-        """Post device operation update."""
+        """Post a special-status (Comfort/Eco) update via the transfer proxy.
+
+        The legacy direct POST to remote/v1/api/devices/{id} is no longer a
+        valid route (it returns AWS API Gateway "Missing Authentication Token"),
+        so route it through remote/v1/app/common/transfer with the same
+        {apiName, requestMethod, bodyParam} envelope the other control writes
+        use. Zones without a setpoint are omitted.
+        """
+        zone_status_list = []
+        for zone in zones:
+            zone_data = {"zoneId": zone.zone_id}
+            if zone.heat_set is not None:
+                zone_data["heatSet"] = zone.heat_set
+            if zone.cool_set is not None:
+                zone_data["coolSet"] = zone.cool_set
+            if len(zone_data) > 1:
+                zone_status_list.append(zone_data)
+
         data = {
-            "status": [
-                {
-                    "deviceGuid": long_id,
-                    "specialStatus": special_status.value if special_status else 0,
-                    "zoneStatus": [
-                        {
-                            "zoneId": zone.zone_id,
-                            "heatSet": zone.heat_set,
-                            **(
-                                {"coolSet": zone.cool_set}
-                                if zone.cool_set is not None
-                                else {}
-                            ),
-                        }
-                        for zone in zones
-                    ],
-                }
-            ]
+            "apiName": "/remote/v1/api/devices",
+            "requestMethod": "POST",
+            "bodyParam": {
+                "gwid": long_id,
+                "specialStatus": special_status.value if special_status else 0,
+                "zoneStatus": zone_status_list,
+            },
         }
 
         await self._api_client.request(
             "POST",
-            f"{AQUAREA_SERVICE_DEVICES}/{long_id}",
-            headers=PanasonicRequestHeader.get_aqua_headers(
-                content_type="application/json",
-                referer=f"{self._base_url}{AQUAREA_SERVICE_A2W_STATUS_DISPLAY}",
-            ),
+            url="remote/v1/app/common/transfer",  # Specific URL for transfer API
             json=data,
+            throw_on_error=True,
         )
 
     async def post_device_zone_heat_temperature(

@@ -21,6 +21,7 @@ from .data import (
     PumpDuty,
     QuietMode,
     SensorMode,
+    SpecialStatus,
     StatusDataMode,
     TankStatus,
 )
@@ -197,7 +198,11 @@ class DeviceManager:
 
         device_status = DeviceStatus(
             long_id=device_info.device_id,  # Use device_info.long_id here
-            operation_status=OperationStatus(device.get("specialStatus")),
+            operation_status=(
+                OperationStatus.OFF
+                if operation_mode_value == 99
+                else OperationStatus.ON
+            ),
             device_status=DeviceModeStatus(device.get("deiceStatus")),
             temperature_outdoor=device.get("outdoorNow"),
             operation_mode=(
@@ -252,7 +257,11 @@ class DeviceManager:
             force_heater=ForceHeater(device.get("forceHeater", 0)),
             holiday_timer=HolidayTimer(device.get("holidayTimer", 0)),
             powerful_time=PowerfulTime(device.get("powerful", 0)),
-            special_status=None,  # Simplified to None
+            special_status=(
+                SpecialStatus(device.get("specialStatus"))
+                if device.get("specialStatus") in (1, 2)
+                else None
+            ),
         )
 
         return device_status
