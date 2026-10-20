@@ -24,7 +24,7 @@ from .data import (
     StatusDataMode,
     TankStatus,
 )
-from .errors import RequestFailedError  # Import RequestFailedError
+from .errors import AuthenticationError, RequestFailedError
 
 if TYPE_CHECKING:
     from .core import AquareaClient
@@ -153,6 +153,10 @@ class DeviceManager:
             self._logger.info(
                 f"get_device_status (live): Raw JSON response for device {device_info.device_id}: {json_response}"
             )
+        except AuthenticationError:
+            # Let @auth_required re-login and retry; the cached request
+            # would fail with the same token anyway.
+            raise
         except Exception as e:
             self._logger.warning(
                 "Failed to get live status for device {}: {}".format(
@@ -177,6 +181,8 @@ class DeviceManager:
                         device_info.device_id, json_response
                     )
                 )
+            except AuthenticationError:
+                raise
             except Exception as e_cached:
                 self._logger.error(
                     "Failed to get cached status for device {}: {}".format(
