@@ -14,6 +14,7 @@ from bs4 import BeautifulSoup
 
 from .const import (
     APP_CLIENT_ID,
+    APP_VERSION_URL,
     AUTH_0_CLIENT,
     AUTH_API_USER_AGENT,
     AUTH_BROWSER_USER_AGENT,
@@ -54,29 +55,27 @@ class CCAppVersion:
         await self.refresh()
 
     async def refresh(self):
-        # Fetch the latest app version from App Store
+        # Fetch the latest Android app version from Google Play
         try:
             async with aiohttp.ClientSession() as session:
-                async with session.get(
-                    "https://apps.apple.com/de/app/panasonic-comfort-cloud/id1348640525"
-                ) as response:
+                async with session.get(APP_VERSION_URL) as response:
                     if response.status == 200:
                         html_content = await response.text()
-                        # Look for version pattern in the HTML
+                        # The version is embedded in the page data as [[["x.y.z"]]
                         version_match = re.search(
-                            r"Version\s+(\d+\.\d+\.\d+)", html_content
+                            r'\[\[\["(\d+\.\d+\.\d+)"\]\]', html_content
                         )
                         if version_match:
                             new_version = version_match.group(1)
-                            _LOGGER.debug(f"Found new app version: {new_version}")
+                            _LOGGER.info(f"Found app version: {new_version}")
                             self.version = new_version
                         else:
                             _LOGGER.warning(
-                                f"Could not parse version from App Store page, keeping current version: {self.version}"
+                                f"Could not parse version from Google Play page, keeping current version: {self.version}"
                             )
                     else:
                         _LOGGER.error(
-                            f"Failed to fetch App Store page: {response.status}, keeping current version: {self.version}"
+                            f"Failed to fetch Google Play page: {response.status}, keeping current version: {self.version}"
                         )
         except Exception as e:
             _LOGGER.error(

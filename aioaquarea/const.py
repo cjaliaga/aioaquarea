@@ -24,7 +24,11 @@ AUTH_BROWSER_USER_AGENT = "Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36
 
 INVALID_TEMPERATURE = 126
 
-DEFAULT_X_APP_VERSION = "4.3.0"
+DEFAULT_X_APP_VERSION = "5.1.0"
+
+# Requests are sent with x-app-type 1 (Android), and the API only accepts the
+# version currently published for that platform, so it is read from Google Play.
+APP_VERSION_URL = "https://play.google.com/store/apps/details?id=com.panasonic.ACCsmart&hl=en"
 
 MAX_VERSION_AGE = 2
 
